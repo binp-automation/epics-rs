@@ -9,6 +9,7 @@ crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
 libc = "0.2"
+driver = { path = "../driver" }
 
 [build-dependencies]
 bindgen = "0.49.0"

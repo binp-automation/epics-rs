@@ -4,11 +4,14 @@ use std::path::{PathBuf};
 use bindgen::Builder;
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    
     let epics_base = PathBuf::from(env::var("EPICS_BASE").unwrap());
     let bindings = Builder::default()
         .clang_arg(format!("-I{}", epics_base.join("include").to_str().unwrap()))
         .clang_arg(format!("-I{}", epics_base.join("include/os/Linux").to_str().unwrap()))
         .clang_arg(format!("-I{}", epics_base.join("include/compiler/clang").to_str().unwrap()))
+        .header(epics_base.join("include/callback.h").to_str().unwrap())
         .header(epics_base.join("include/iocsh.h").to_str().unwrap())
         .header(epics_base.join("include/dbCommon.h").to_str().unwrap())
         .header(epics_base.join("include/aiRecord.h").to_str().unwrap())

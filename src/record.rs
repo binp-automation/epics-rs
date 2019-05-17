@@ -1,28 +1,40 @@
 use std::ops::{Deref, DerefMut};
-use std::mem;
 use std::ffi::{CStr};
+use std::ptr;
 
 use libc::{c_int, c_ushort, c_void};
 
-use driver::{Data};
-
 use crate::epics::{
-    CALLBACK, callbackRequestProcessCallback,
+    IOSCANPVT, scanIoInit, scanIoRequest,
+    CALLBACK, callbackSetProcess, callbackRequest,
     dbCommon, aiRecord, aoRecord, biRecord, boRecord,
 };
 
-pub(crate) struct PrivateData {
-    callback: CALLBACK,
-    data: Data,
+#[derive(Debug, Clone)]
+pub struct Scan {
+    pub(crate) raw: IOSCANPVT,
 }
 
-impl PrivateData {
-    pub(crate) fn new() -> Self {
-        Self {
-            callback: unsafe { mem::uninitialized() },
-            data: Data::new(),
+impl Scan {
+    pub fn new() -> Self {
+        let mut scan = ptr::null_mut();
+        unsafe { scanIoInit((&mut scan) as *mut _); }
+        Self { raw: scan }
+    }
+    pub fn request(&self) -> Result<(),()> {
+        match unsafe { scanIoRequest(self.raw) } {
+            0 => Err(()),
+            _ => Ok(()),
         }
     }
+}
+unsafe impl Send for Scan {}
+unsafe impl Sync for Scan {}
+
+#[derive(Debug)]
+pub(crate) struct Private {
+    callback: CALLBACK,
+    scan: Scan,
 }
 
 /// Common EPICS record
@@ -32,8 +44,14 @@ pub struct Record {
 
 impl Record {
     pub(crate) fn init(raw: &'static mut dbCommon) {
-        let priv_data = Box::new(PrivateData::new());
-        raw.dpvt = Box::leak(priv_data) as *mut _ as *mut c_void;
+        let mut cb: CALLBACK = CALLBACK::default();
+        unsafe { callbackSetProcess(
+            (&mut cb) as *mut _,
+            raw.prio as c_int,
+            raw as *mut _ as *mut c_void,
+        ); }
+        let priv_data = Private { callback: cb, scan: Scan::new() };
+        raw.dpvt = Box::leak(Box::new(priv_data)) as *mut _ as *mut c_void;
     }
     pub(crate) fn from(raw: &'static mut dbCommon) -> Self {
         Self { raw }
@@ -42,21 +60,31 @@ impl Record {
         unsafe { CStr::from_ptr(self.raw.name.as_ptr()) }.to_str().unwrap()
     }
 
-    pub(crate) fn private_data(&self) -> &PrivateData {
-        let ptr = self.raw.dpvt as *const PrivateData;
+    pub(crate) fn pact(&self) -> bool {
+        self.raw.pact != 0
+    }
+    pub(crate) fn set_pact(&mut self, pact: bool) {
+        self.raw.pact = if pact { 1 } else { 0 };
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn private(&self) -> &Private {
+        let ptr = self.raw.dpvt as *const Private;
         unsafe { ptr.as_ref().unwrap() }
     }
-    pub(crate) fn private_data_mut(&mut self) -> &mut PrivateData {
-        let ptr = self.raw.dpvt as *mut PrivateData;
+    pub(crate) fn private_mut(&mut self) -> &mut Private {
+        let ptr = self.raw.dpvt as *mut Private;
         unsafe { ptr.as_mut().unwrap() }
     }
+
     pub(crate) fn process(&mut self) {
-        let priv_data = self.private_data_mut();
-        unsafe { callbackRequestProcessCallback(
-            (&mut priv_data.callback) as *mut CALLBACK,
-            self.raw.prio as c_int,
-            (&mut self.raw) as *mut _ as *mut c_void,
-        ); }
+        let priv_data = self.private_mut();
+        let cb = &mut priv_data.callback;
+        unsafe { assert_eq!(callbackRequest(cb as *mut _), 0); }
+    }
+
+    pub(crate) fn scan(&self) -> &Scan {
+        &self.private().scan
     }
 }
 unsafe impl Send for Record {}
@@ -97,9 +125,20 @@ impl DerefMut for AiRecord {
         &mut self.base
     }
 }
+impl Into<AnyRecord> for AiRecord {
+    fn into(self) -> AnyRecord {
+        AnyRecord::Ai(self)
+    }
+}
+impl Into<ReadRecord> for AiRecord {
+    fn into(self) -> ReadRecord {
+        ReadRecord::Ai(self)
+    }
+}
 unsafe impl Send for AiRecord {}
 
 /// Analog output record
+
 pub struct AoRecord {
     raw: &'static mut aoRecord,
     base: Record,
@@ -133,6 +172,16 @@ impl Deref for AoRecord {
 impl DerefMut for AoRecord {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.base
+    }
+}
+impl Into<AnyRecord> for AoRecord {
+    fn into(self) -> AnyRecord {
+        AnyRecord::Ao(self)
+    }
+}
+impl Into<WriteRecord> for AoRecord {
+    fn into(self) -> WriteRecord {
+        WriteRecord::Ao(self)
     }
 }
 unsafe impl Send for AoRecord {}
@@ -173,6 +222,16 @@ impl DerefMut for BiRecord {
         &mut self.base
     }
 }
+impl Into<AnyRecord> for BiRecord {
+    fn into(self) -> AnyRecord {
+        AnyRecord::Bi(self)
+    }
+}
+impl Into<ReadRecord> for BiRecord {
+    fn into(self) -> ReadRecord {
+        ReadRecord::Bi(self)
+    }
+}
 unsafe impl Send for BiRecord {}
 
 /// Binary output record
@@ -209,6 +268,16 @@ impl Deref for BoRecord {
 impl DerefMut for BoRecord {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.base
+    }
+}
+impl Into<AnyRecord> for BoRecord {
+    fn into(self) -> AnyRecord {
+        AnyRecord::Bo(self)
+    }
+}
+impl Into<WriteRecord> for BoRecord {
+    fn into(self) -> WriteRecord {
+        WriteRecord::Bo(self)
     }
 }
 unsafe impl Send for BoRecord {}

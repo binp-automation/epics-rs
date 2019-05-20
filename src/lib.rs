@@ -1,10 +1,10 @@
-mod epics;
-mod export;
+pub mod export;
+pub mod epics;
 
 pub mod system;
 pub mod record;
 pub mod context;
 
-mod devsup;
+pub mod devsup;
 
 pub use devsup::{DeviceSupport};

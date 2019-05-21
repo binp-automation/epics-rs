@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::thread::{self, JoinHandle};
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::sync::Mutex;
+use std::str::from_utf8;
 
 use lazy_static::lazy_static;
 
@@ -80,19 +81,19 @@ fn with_channel<F: FnOnce(&Sender<Message>)>(f: F) {
 }
 
 pub(crate) fn record_init(mut record: AnyRecord) {
-    println!("[rsbind] record_init({})", record.name());
+    println!("[rsbind] record_init({})", from_utf8(record.name()).unwrap());
     with_devsup(|ds| ds.init(&mut record).unwrap());
 }
 
 pub(crate) fn record_ioint(_detach: bool, mut record: Record) -> Scan {
-    println!("[rsbind] record_ioint({})", record.name());
+    println!("[rsbind] record_ioint({})", from_utf8(record.name()).unwrap());
     let scan = record.scan().clone();
     with_devsup(|ds| ds.set_scan(&mut record, scan.clone()).unwrap());
     scan
 }
 
 pub(crate) fn record_write(mut record: WriteRecord) {
-    println!("[rsbind] record_write({})", record.name());
+    println!("[rsbind] record_write({})", from_utf8(record.name()).unwrap());
     if !record.pact() {
         record.set_pact(true);
         with_channel(|channel| {
@@ -102,7 +103,7 @@ pub(crate) fn record_write(mut record: WriteRecord) {
 }
 
 pub(crate) fn record_read(mut record: ReadRecord) {
-    println!("[rsbind] record_read({})", record.name());
+    println!("[rsbind] record_read({})", from_utf8(record.name()).unwrap());
     if !record.pact() {
         record.set_pact(true);
         with_channel(|channel| {

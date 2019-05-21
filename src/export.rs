@@ -4,11 +4,20 @@
 use libc::{c_int, c_long};
 
 use crate::epics::{
-//    iocshRegister, iocshFuncDef, iocshArg,
     IOSCANPVT,
-    dbCommon, aiRecord, aoRecord, biRecord, boRecord,
+    dbCommon,
+    aiRecord, aoRecord,
+    biRecord, boRecord,
+    longinRecord, longoutRecord,
+    stringinRecord, stringoutRecord,
 };
-use crate::record::{Record, AiRecord, AoRecord, BiRecord, BoRecord};
+use crate::record::{
+    Record,
+    AiRecord, AoRecord,
+    BiRecord, BoRecord,
+    LonginRecord, LongoutRecord,
+    StringinRecord, StringoutRecord,
+};
 use crate::system;
 
 #[macro_export]
@@ -79,7 +88,7 @@ extern fn rsbind_bi_init_record(rec: *mut biRecord) -> c_long {
     0
 }
 #[no_mangle]
-extern fn rsbind_bi_read_bi(rec: *mut biRecord, after: c_int) -> c_long {
+extern fn rsbind_bi_read_bi(rec: *mut biRecord) -> c_long {
     system::record_read(BiRecord::from(unsafe { rec.as_mut().unwrap() }).into());
     0
 }
@@ -92,7 +101,59 @@ extern fn rsbind_bo_init_record(rec: *mut boRecord) -> c_long {
     0
 }
 #[no_mangle]
-extern fn rsbind_bo_write_bo(rec: *mut boRecord, after: c_int) -> c_long {
+extern fn rsbind_bo_write_bo(rec: *mut boRecord) -> c_long {
     system::record_write(BoRecord::from(unsafe { rec.as_mut().unwrap() }).into());
+    0
+}
+
+// longin record
+
+#[no_mangle]
+extern fn rsbind_longin_init_record(rec: *mut longinRecord) -> c_long {
+    system::record_init(LonginRecord::new(unsafe { rec.as_mut().unwrap() }).into());
+    0
+}
+#[no_mangle]
+extern fn rsbind_longin_read_longin(rec: *mut longinRecord) -> c_long {
+    system::record_read(LonginRecord::from(unsafe { rec.as_mut().unwrap() }).into());
+    0
+}
+
+// longout record
+
+#[no_mangle]
+extern fn rsbind_longout_init_record(rec: *mut longoutRecord) -> c_long {
+    system::record_init(LongoutRecord::new(unsafe { rec.as_mut().unwrap() }).into());
+    0
+}
+#[no_mangle]
+extern fn rsbind_longout_write_longout(rec: *mut longoutRecord) -> c_long {
+    system::record_write(LongoutRecord::from(unsafe { rec.as_mut().unwrap() }).into());
+    0
+}
+
+// stringin record
+
+#[no_mangle]
+extern fn rsbind_stringin_init_record(rec: *mut stringinRecord) -> c_long {
+    system::record_init(StringinRecord::new(unsafe { rec.as_mut().unwrap() }).into());
+    0
+}
+#[no_mangle]
+extern fn rsbind_stringin_read_stringin(rec: *mut stringinRecord) -> c_long {
+    system::record_read(StringinRecord::from(unsafe { rec.as_mut().unwrap() }).into());
+    0
+}
+
+// stringout record
+
+#[no_mangle]
+extern fn rsbind_stringout_init_record(rec: *mut stringoutRecord) -> c_long {
+    system::record_init(StringoutRecord::new(unsafe { rec.as_mut().unwrap() }).into());
+    0
+}
+#[no_mangle]
+extern fn rsbind_stringout_write_stringout(rec: *mut stringoutRecord) -> c_long {
+    system::record_write(StringoutRecord::from(unsafe { rec.as_mut().unwrap() }).into());
     0
 }

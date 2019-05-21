@@ -16,7 +16,6 @@ pub(crate) enum Message {
 }
 
 struct Handler {
-    devsup: Box<DeviceSupport + Send>,
     channel: Sender<Message>,
     thread: JoinHandle<()>,
 }
@@ -30,21 +29,17 @@ thread_local! {
     static CHANNEL: Cell<Option<Sender<Message>>> = Cell::new(None);
 }
 
-fn with_devsup<F: FnOnce(&mut DeviceSupport)>(f: F) {
-    let mut guard = HANDLER.lock().unwrap();
-    f(guard.as_mut().unwrap().devsup.as_mut());
-}
-
-fn handler_loop(channel: Receiver<Message>) {
+fn handler_loop<FR, FW>(channel: Receiver<Message>, fr: FR, fw: FW)
+where FR: Fn(&mut ReadRecord), FW: Fn(&mut WriteRecord) {
     loop {
         match channel.recv().unwrap() {
             Message::Break => break,
             Message::Read(mut rec) => {
-                with_devsup(|ds| ds.read(&mut rec).unwrap());
+                fr(&mut rec);
                 rec.process();
             },
             Message::Write(mut rec) => {
-                with_devsup(|ds| ds.write(&mut rec).unwrap());
+                fw(&mut rec);
                 rec.process();
             },
         }
@@ -80,19 +75,7 @@ fn with_channel<F: FnOnce(&Sender<Message>)>(f: F) {
     });
 }
 
-pub(crate) fn record_init(mut record: AnyRecord) {
-    println!("[rsbind] record_init({})", from_utf8(record.name()).unwrap());
-    with_devsup(|ds| ds.init(&mut record).unwrap());
-}
-
-pub(crate) fn record_ioint(_detach: bool, mut record: Record) -> Scan {
-    println!("[rsbind] record_ioint({})", from_utf8(record.name()).unwrap());
-    let scan = record.scan().clone();
-    with_devsup(|ds| ds.set_scan(&mut record, scan.clone()).unwrap());
-    scan
-}
-
-pub(crate) fn record_write(mut record: WriteRecord) {
+pub fn record_write(mut record: WriteRecord) {
     println!("[rsbind] record_write({})", from_utf8(record.name()).unwrap());
     if !record.pact() {
         record.set_pact(true);
@@ -102,7 +85,7 @@ pub(crate) fn record_write(mut record: WriteRecord) {
     }
 }
 
-pub(crate) fn record_read(mut record: ReadRecord) {
+pub fn record_read(mut record: ReadRecord) {
     println!("[rsbind] record_read({})", from_utf8(record.name()).unwrap());
     if !record.pact() {
         record.set_pact(true);

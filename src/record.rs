@@ -3,11 +3,11 @@ use std::ptr;
 
 use libc::{c_int, c_ushort, c_char, c_void};
 
-use crate::epics::{
+use epics_sys::{
     IOSCANPVT, scanIoInit, scanIoRequest,
     CALLBACK, callbackSetProcess, callbackRequest,
 };
-use crate::epics::{
+use epics_sys::{
     dbCommon,
     aiRecord, aoRecord,
     biRecord, boRecord,
@@ -41,7 +41,7 @@ fn cstr_to_slice(src: &[c_char]) -> &[u8] {
 
 #[derive(Debug, Clone)]
 pub struct Scan {
-    pub(crate) raw: IOSCANPVT,
+    raw: IOSCANPVT,
 }
 
 impl Scan {
@@ -56,85 +56,96 @@ impl Scan {
             _ => Ok(()),
         }
     }
+    pub unsafe fn as_raw(&self) -> &IOSCANPVT {
+        &self.raw
+    }
 }
 unsafe impl Send for Scan {}
 unsafe impl Sync for Scan {}
 
+pub trait Record: Deref<Target=RecordBase> + DerefMut {
+    type Raw;
+    unsafe fn from_raw(raw: Self::Raw) -> Self;
+    unsafe fn init_raw(&mut self);
+}
+
+
 #[derive(Debug)]
-pub(crate) struct Private {
+pub struct Private {
     callback: CALLBACK,
     scan: Scan,
 }
 
 /// Common EPICS record
-pub struct Record {
+pub struct RecordBase {
     raw: &'static mut dbCommon,
 }
 
-impl Record {
-    pub(crate) fn init(raw: &'static mut dbCommon) {
+impl RecordBase {
+    pub unsafe fn from_raw(raw: *mut dbCommon) -> Self {
+        Self { raw: raw.as_mut().unwrap() }
+    }
+    pub unsafe fn init_raw(&mut self) {
         let mut cb: CALLBACK = CALLBACK::default();
-        unsafe { callbackSetProcess(
+        callbackSetProcess(
             (&mut cb) as *mut _,
-            raw.prio as c_int,
-            raw as *mut _ as *mut c_void,
-        ); }
+            self.raw.prio as c_int,
+            self.raw as *mut _ as *mut c_void,
+        );
         let priv_data = Private { callback: cb, scan: Scan::new() };
-        raw.dpvt = Box::leak(Box::new(priv_data)) as *mut _ as *mut c_void;
+        self.raw.dpvt = Box::leak(Box::new(priv_data)) as *mut _ as *mut c_void;
     }
-    pub(crate) fn from(raw: &'static mut dbCommon) -> Self {
-        Self { raw }
-    }
+
     pub fn name(&self) -> &[u8] {
         cstr_to_slice(&self.raw.name)
     }
 
-    pub(crate) fn pact(&self) -> bool {
+    pub unsafe fn pact(&self) -> bool {
         self.raw.pact != 0
     }
-    pub(crate) fn set_pact(&mut self, pact: bool) {
+    pub unsafe fn set_pact(&mut self, pact: bool) {
         self.raw.pact = if pact { 1 } else { 0 };
     }
 
     #[allow(dead_code)]
-    pub(crate) fn private(&self) -> &Private {
+    pub unsafe fn private(&self) -> &Private {
         let ptr = self.raw.dpvt as *const Private;
-        unsafe { ptr.as_ref().unwrap() }
+        ptr.as_ref().unwrap()
     }
-    pub(crate) fn private_mut(&mut self) -> &mut Private {
+    pub unsafe fn private_mut(&mut self) -> &mut Private {
         let ptr = self.raw.dpvt as *mut Private;
-        unsafe { ptr.as_mut().unwrap() }
+        ptr.as_mut().unwrap()
     }
 
-    pub(crate) fn process(&mut self) {
+    pub unsafe fn process(&mut self) {
         let priv_data = self.private_mut();
         let cb = &mut priv_data.callback;
-        unsafe { assert_eq!(callbackRequest(cb as *mut _), 0); }
+        assert_eq!(callbackRequest(cb as *mut _), 0);
     }
 
-    pub(crate) fn scan(&self) -> &Scan {
+    pub unsafe fn get_scan(&self) -> &Scan {
         &self.private().scan
     }
 }
-unsafe impl Send for Record {}
 
 /// ai record
 pub struct AiRecord {
     raw: &'static mut aiRecord,
-    base: Record,
+    base: RecordBase,
 }
 
+impl Record for AiRecord {
+    type Raw = *mut aiRecord;
+    unsafe fn from_raw(raw: Self::Raw) -> Self {
+        let ptr = raw as *mut dbCommon;
+        let base = RecordBase::from_raw(ptr);
+        Self { raw: raw.as_mut().unwrap(), base }
+    }
+    unsafe fn init_raw(&mut self) {
+        self.base.init_raw();
+    }
+}
 impl AiRecord {
-    pub(crate) fn new(raw: &'static mut aiRecord) -> Self {
-        let ptr = (raw as *mut aiRecord) as *mut dbCommon;
-        Record::init(unsafe{ &mut *ptr });
-        Self::from(raw)
-    }
-    pub(crate) fn from(raw: &'static mut aiRecord) -> Self {
-        let ptr = (raw as *mut aiRecord) as *mut dbCommon;
-        let base = Record::from(unsafe{ &mut *ptr });
-        Self { raw, base }
-    }
     pub fn val(&self) -> f64 {
         self.raw.val
     }
@@ -144,7 +155,7 @@ impl AiRecord {
 }
 
 impl Deref for AiRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         &self.base
     }
@@ -164,25 +175,25 @@ impl Into<ReadRecord> for AiRecord {
         ReadRecord::Ai(self)
     }
 }
-unsafe impl Send for AiRecord {}
 
 /// ao record
 pub struct AoRecord {
     raw: &'static mut aoRecord,
-    base: Record,
+    base: RecordBase,
 }
 
+impl Record for AoRecord {
+    type Raw = *mut aoRecord;
+    unsafe fn from_raw(raw: Self::Raw) -> Self {
+        let ptr = raw as *mut dbCommon;
+        let base = RecordBase::from_raw(ptr);
+        Self { raw: raw.as_mut().unwrap(), base }
+    }
+    unsafe fn init_raw(&mut self) {
+        self.base.init_raw();
+    }
+}
 impl AoRecord {
-    pub(crate) fn new(raw: &'static mut aoRecord) -> Self {
-        let ptr = (raw as *mut aoRecord) as *mut dbCommon;
-        Record::init(unsafe{ &mut *ptr });
-        Self::from(raw)
-    }
-    pub(crate) fn from(raw: &'static mut aoRecord) -> Self {
-        let ptr = (raw as *mut aoRecord) as *mut dbCommon;
-        let base = Record::from(unsafe{ &mut *ptr });
-        Self { raw, base }
-    }
     pub fn val(&self) -> f64 {
         self.raw.val
     }
@@ -192,7 +203,7 @@ impl AoRecord {
 }
 
 impl Deref for AoRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         &self.base
     }
@@ -212,25 +223,25 @@ impl Into<WriteRecord> for AoRecord {
         WriteRecord::Ao(self)
     }
 }
-unsafe impl Send for AoRecord {}
 
 /// bi record
 pub struct BiRecord {
     raw: &'static mut biRecord,
-    base: Record,
+    base: RecordBase,
 }
 
+impl Record for BiRecord {
+    type Raw = *mut biRecord;
+    unsafe fn from_raw(raw: Self::Raw) -> Self {
+        let ptr = raw as *mut dbCommon;
+        let base = RecordBase::from_raw(ptr);
+        Self { raw: raw.as_mut().unwrap(), base }
+    }
+    unsafe fn init_raw(&mut self) {
+        self.base.init_raw();
+    }
+}
 impl BiRecord {
-    pub(crate) fn new(raw: &'static mut biRecord) -> Self {
-        let ptr = (raw as *mut biRecord) as *mut dbCommon;
-        Record::init(unsafe{ &mut *ptr });
-        Self::from(raw)
-    }
-    pub(crate) fn from(raw: &'static mut biRecord) -> Self {
-        let ptr = (raw as *mut biRecord) as *mut dbCommon;
-        let base = Record::from(unsafe{ &mut *ptr });
-        Self { raw, base }
-    }
     pub fn val(&self) -> bool {
         self.raw.val != 0
     }
@@ -240,7 +251,7 @@ impl BiRecord {
 }
 
 impl Deref for BiRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         &self.base
     }
@@ -260,25 +271,25 @@ impl Into<ReadRecord> for BiRecord {
         ReadRecord::Bi(self)
     }
 }
-unsafe impl Send for BiRecord {}
 
 /// bo record
 pub struct BoRecord {
     raw: &'static mut boRecord,
-    base: Record,
+    base: RecordBase,
 }
 
+impl Record for BoRecord {
+    type Raw = *mut boRecord;
+    unsafe fn from_raw(raw: Self::Raw) -> Self {
+        let ptr = raw as *mut dbCommon;
+        let base = RecordBase::from_raw(ptr);
+        Self { raw: raw.as_mut().unwrap(), base }
+    }
+    unsafe fn init_raw(&mut self) {
+        self.base.init_raw();
+    }
+}
 impl BoRecord {
-    pub(crate) fn new(raw: &'static mut boRecord) -> Self {
-        let ptr = (raw as *mut boRecord) as *mut dbCommon;
-        Record::init(unsafe{ &mut *ptr });
-        Self::from(raw)
-    }
-    pub(crate) fn from(raw: &'static mut boRecord) -> Self {
-        let ptr = (raw as *mut boRecord) as *mut dbCommon;
-        let base = Record::from(unsafe{ &mut *ptr });
-        Self { raw, base }
-    }
     pub fn val(&self) -> bool {
         self.raw.val != 0
     }
@@ -288,7 +299,7 @@ impl BoRecord {
 }
 
 impl Deref for BoRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         &self.base
     }
@@ -308,25 +319,25 @@ impl Into<WriteRecord> for BoRecord {
         WriteRecord::Bo(self)
     }
 }
-unsafe impl Send for BoRecord {}
 
 /// longin record
 pub struct LonginRecord {
     raw: &'static mut longinRecord,
-    base: Record,
+    base: RecordBase,
 }
 
+impl Record for LonginRecord {
+    type Raw = *mut longinRecord;
+    unsafe fn from_raw(raw: Self::Raw) -> Self {
+        let ptr = raw as *mut dbCommon;
+        let base = RecordBase::from_raw(ptr);
+        Self { raw: raw.as_mut().unwrap(), base }
+    }
+    unsafe fn init_raw(&mut self) {
+        self.base.init_raw();
+    }
+}
 impl LonginRecord {
-    pub(crate) fn new(raw: &'static mut longinRecord) -> Self {
-        let ptr = (raw as *mut longinRecord) as *mut dbCommon;
-        Record::init(unsafe{ &mut *ptr });
-        Self::from(raw)
-    }
-    pub(crate) fn from(raw: &'static mut longinRecord) -> Self {
-        let ptr = (raw as *mut longinRecord) as *mut dbCommon;
-        let base = Record::from(unsafe{ &mut *ptr });
-        Self { raw, base }
-    }
     pub fn val(&self) -> i32 {
         self.raw.val
     }
@@ -336,7 +347,7 @@ impl LonginRecord {
 }
 
 impl Deref for LonginRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         &self.base
     }
@@ -356,25 +367,25 @@ impl Into<ReadRecord> for LonginRecord {
         ReadRecord::Longin(self)
     }
 }
-unsafe impl Send for LonginRecord {}
 
 /// longout record
 pub struct LongoutRecord {
     raw: &'static mut longoutRecord,
-    base: Record,
+    base: RecordBase,
 }
 
+impl Record for LongoutRecord {
+    type Raw = *mut longoutRecord;
+    unsafe fn from_raw(raw: Self::Raw) -> Self {
+        let ptr = raw as *mut dbCommon;
+        let base = RecordBase::from_raw(ptr);
+        Self { raw: raw.as_mut().unwrap(), base }
+    }
+    unsafe fn init_raw(&mut self) {
+        self.base.init_raw();
+    }
+}
 impl LongoutRecord {
-    pub(crate) fn new(raw: &'static mut longoutRecord) -> Self {
-        let ptr = (raw as *mut longoutRecord) as *mut dbCommon;
-        Record::init(unsafe{ &mut *ptr });
-        Self::from(raw)
-    }
-    pub(crate) fn from(raw: &'static mut longoutRecord) -> Self {
-        let ptr = (raw as *mut longoutRecord) as *mut dbCommon;
-        let base = Record::from(unsafe{ &mut *ptr });
-        Self { raw, base }
-    }
     pub fn val(&self) -> i32 {
         self.raw.val
     }
@@ -384,7 +395,7 @@ impl LongoutRecord {
 }
 
 impl Deref for LongoutRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         &self.base
     }
@@ -404,26 +415,26 @@ impl Into<WriteRecord> for LongoutRecord {
         WriteRecord::Longout(self)
     }
 }
-unsafe impl Send for LongoutRecord {}
 
 
 /// stringin record
 pub struct StringinRecord {
     raw: &'static mut stringinRecord,
-    base: Record,
+    base: RecordBase,
 }
 
+impl Record for StringinRecord {
+    type Raw = *mut stringinRecord;
+    unsafe fn from_raw(raw: Self::Raw) -> Self {
+        let ptr = raw as *mut dbCommon;
+        let base = RecordBase::from_raw(ptr);
+        Self { raw: raw.as_mut().unwrap(), base }
+    }
+    unsafe fn init_raw(&mut self) {
+        self.base.init_raw();
+    }
+}
 impl StringinRecord {
-    pub(crate) fn new(raw: &'static mut stringinRecord) -> Self {
-        let ptr = (raw as *mut stringinRecord) as *mut dbCommon;
-        Record::init(unsafe{ &mut *ptr });
-        Self::from(raw)
-    }
-    pub(crate) fn from(raw: &'static mut stringinRecord) -> Self {
-        let ptr = (raw as *mut stringinRecord) as *mut dbCommon;
-        let base = Record::from(unsafe{ &mut *ptr });
-        Self { raw, base }
-    }
     pub fn val(&self) -> &[u8] {
         cstr_to_slice(&self.raw.val)
     }
@@ -433,7 +444,7 @@ impl StringinRecord {
 }
 
 impl Deref for StringinRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         &self.base
     }
@@ -453,25 +464,25 @@ impl Into<ReadRecord> for StringinRecord {
         ReadRecord::Stringin(self)
     }
 }
-unsafe impl Send for StringinRecord {}
 
 /// stringout record
 pub struct StringoutRecord {
     raw: &'static mut stringoutRecord,
-    base: Record,
+    base: RecordBase,
 }
 
+impl Record for StringoutRecord {
+    type Raw = *mut stringoutRecord;
+    unsafe fn from_raw(raw: Self::Raw) -> Self {
+        let ptr = raw as *mut dbCommon;
+        let base = RecordBase::from_raw(ptr);
+        Self { raw: raw.as_mut().unwrap(), base }
+    }
+    unsafe fn init_raw(&mut self) {
+        self.base.init_raw();
+    }
+}
 impl StringoutRecord {
-    pub(crate) fn new(raw: &'static mut stringoutRecord) -> Self {
-        let ptr = (raw as *mut stringoutRecord) as *mut dbCommon;
-        Record::init(unsafe{ &mut *ptr });
-        Self::from(raw)
-    }
-    pub(crate) fn from(raw: &'static mut stringoutRecord) -> Self {
-        let ptr = (raw as *mut stringoutRecord) as *mut dbCommon;
-        let base = Record::from(unsafe{ &mut *ptr });
-        Self { raw, base }
-    }
     pub fn val(&self) -> &[u8] {
         cstr_to_slice(&self.raw.val)
     }
@@ -481,7 +492,7 @@ impl StringoutRecord {
 }
 
 impl Deref for StringoutRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         &self.base
     }
@@ -501,7 +512,6 @@ impl Into<WriteRecord> for StringoutRecord {
         WriteRecord::Stringout(self)
     }
 }
-unsafe impl Send for StringoutRecord {}
 
 // any record
 pub enum AnyRecord {
@@ -515,7 +525,7 @@ pub enum AnyRecord {
     Stringout(StringoutRecord),
 }
 impl Deref for AnyRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         match self {
             AnyRecord::Ai(ref r) => r,
@@ -551,7 +561,7 @@ pub enum ReadRecord {
     Stringin(StringinRecord),
 }
 impl Deref for ReadRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         match self {
             ReadRecord::Ai(ref r) => r,
@@ -580,7 +590,7 @@ pub enum WriteRecord {
     Stringout(StringoutRecord),
 }
 impl Deref for WriteRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         match self {
             WriteRecord::Ao(ref r) => r,
@@ -607,7 +617,7 @@ pub enum LinconvRecord {
     Ao(AoRecord),
 }
 impl Deref for LinconvRecord {
-    type Target = Record;
+    type Target = RecordBase;
     fn deref(&self) -> &Self::Target {
         match self {
             LinconvRecord::Ai(ref r) => r,

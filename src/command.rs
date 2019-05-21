@@ -8,7 +8,7 @@ use libc::{c_int};
 
 use lazy_static::lazy_static;
 
-use crate::epics::{
+use epics_sys::{
     self,
     iocshRegister, iocshFuncDef,
     iocshArg, iocshArgType, iocshArgBuf,
@@ -88,12 +88,12 @@ pub enum ArgType {
 impl ArgType {
     pub fn as_raw(&self) -> iocshArgType {
         match self {
-            ArgType::Int              => epics::iocshArgType_iocshArgInt,
-            ArgType::Double           => epics::iocshArgType_iocshArgDouble,
-            ArgType::String           => epics::iocshArgType_iocshArgString,
-            ArgType::PersistentString => epics::iocshArgType_iocshArgPdbbase,
-            ArgType::Pdbbase          => epics::iocshArgType_iocshArgArgv,
-            ArgType::Argv             => epics::iocshArgType_iocshArgPersistentString,
+            ArgType::Int              => epics_sys::iocshArgType_iocshArgInt,
+            ArgType::Double           => epics_sys::iocshArgType_iocshArgDouble,
+            ArgType::String           => epics_sys::iocshArgType_iocshArgString,
+            ArgType::PersistentString => epics_sys::iocshArgType_iocshArgPdbbase,
+            ArgType::Pdbbase          => epics_sys::iocshArgType_iocshArgArgv,
+            ArgType::Argv             => epics_sys::iocshArgType_iocshArgPersistentString,
         }
     }
 }
@@ -159,9 +159,9 @@ macro_rules! register_command {
         register_command!(fn $fn_name ( $( $arg_name : $arg_type ),* ) -> () $fn_body);
     };
     ( fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* ) -> () $fn_body:block ) => {
-        extern "C" fn wrapper(args: *const $crate::epics::iocshArgBuf) {
+        extern "C" fn wrapper(args: *const $crate::epics_sys::iocshArgBuf) {
             fn user_func( $( $arg_name : $arg_type ),* ) $fn_body
-            let len = {<[()]>::len(&[$($crate::_replace!($arg_type, ())),*])};
+            let len = {<[()]>::len(&[ $( $crate::_replace!($arg_type, ()) ),* ])};
             let arg_buf = $crate::command::ArgBuf::new(args, len);
             let mut iter = arg_buf.iter();
             user_func($(

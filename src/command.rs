@@ -1,45 +1,58 @@
 use std::slice;
 use std::ffi::{CStr, CString};
-//use std::sync::Mutex;
-//use std::collections::HashMap;
+use std::ptr;
+use std::sync::Mutex;
+use std::collections::HashMap;
 
-//use lazy_static::lazy_static;
+use libc::{c_int};
+
+use lazy_static::lazy_static;
 
 use crate::epics::{
     self,
     iocshRegister, iocshFuncDef,
     iocshArg, iocshArgType, iocshArgBuf,
 };
-/*
+
 lazy_static! {
-    static ref COMMANDS: Mutex<HashMap<String, FuncDef>> = Mutex::new(HashMap::new());
+    static ref COMMANDS: Mutex<HashMap<CString, FuncDef>> = Mutex::new(HashMap::new());
 }
-*/
+
+#[allow(dead_code)]
 pub struct FuncDef {
+    raw: Box<iocshFuncDef>,
+    raw_args: Vec<*const iocshArg>,
     name: CString,
     args: Vec<ArgDef>,
-
 }
 impl FuncDef {
     pub fn new(name: &str) -> Self {
-        Self { name: CString::new(name.to_string()).unwrap(), args: Vec::new() }
+        let name = CString::new(name.to_string()).unwrap();
+        Self {
+            raw: Box::new(iocshFuncDef {
+                name: name.as_c_str().as_ptr(),
+                nargs: 0,
+                arg: ptr::null(),
+            }),
+            raw_args: Vec::new(),
+            name, args: Vec::new(),
+        }
     }
     pub fn arg(mut self, name: &str, dtype: ArgType) -> Self {
         self.args.push(ArgDef::new(name, dtype));
         self
     }
-    pub fn register(self, f: extern "C" fn(*const iocshArgBuf)) {
-        let raw_args: Vec<_> = self.args.iter().map(|a| a.as_raw_ptr()).collect();
-        let raw = iocshFuncDef {
-            name: self.name.as_c_str().as_ptr(),
-            nargs: raw_args.len() as i32,
-            arg: raw_args.as_ptr(),
-        };
-        println!("{:?}", raw);
-        println!("{:?}", unsafe { CStr::from_ptr(raw.name) });
-        unsafe { iocshRegister(&raw as *const _, Some(f)) };
+    pub fn register(mut self, f: extern "C" fn(*const iocshArgBuf)) {
+        for arg in self.args.iter() {
+            self.raw_args.push(arg.as_raw() as *const _);
+        }
+        self.raw.nargs = self.args.len() as c_int;
+        self.raw.arg = self.raw_args.as_ptr();
+        unsafe { iocshRegister(self.raw.as_ref() as *const _, Some(f)) };
+        assert!(COMMANDS.lock().unwrap().insert(self.name.clone(), self).is_none());
     }
 }
+unsafe impl Send for FuncDef {}
 
 #[allow(dead_code)]
 pub struct ArgDef {
@@ -58,10 +71,11 @@ impl ArgDef {
             name, dtype,
         }
     }
-    fn as_raw_ptr(&self) -> *const iocshArg {
-        &self.raw as *const _
+    fn as_raw(&self) -> &iocshArg {
+        &self.raw
     }
 }
+unsafe impl Send for ArgDef {}
 
 pub enum ArgType {
     Int,
@@ -148,15 +162,15 @@ macro_rules! register_command {
         extern "C" fn wrapper(args: *const $crate::epics::iocshArgBuf) {
             fn user_func( $( $arg_name : $arg_type ),* ) $fn_body
             let len = {<[()]>::len(&[$($crate::_replace!($arg_type, ())),*])};
-            let arg_buf = $crate::context::ArgBuf::new(args, len);
+            let arg_buf = $crate::command::ArgBuf::new(args, len);
             let mut iter = arg_buf.iter();
             user_func($(
-                <$arg_type as $crate::context::AsType>::from_buf(iter.next().unwrap())
+                <$arg_type as $crate::command::AsType>::from_buf(iter.next().unwrap())
             ),*);
         }
-        $crate::context::FuncDef::new(stringify!($fn_name))
+        $crate::command::FuncDef::new(stringify!($fn_name))
         $(
-            .arg(stringify!($fn_name), <$arg_type as $crate::context::AsType>::dtype())
+            .arg(stringify!($fn_name), <$arg_type as $crate::command::AsType>::dtype())
         )*
         .register(wrapper);
     };

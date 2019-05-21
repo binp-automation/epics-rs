@@ -16,7 +16,7 @@ macro_rules! bind_device_support {
     ($dsmf:expr) => {
         #[no_mangle]
         extern fn rsbind_init() {
-            $crate::system::init(Box::new($dsmf()));
+            $crate::system::init(Box::new($dsmf));
         }
     }
 }

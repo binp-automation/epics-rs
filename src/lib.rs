@@ -3,7 +3,7 @@ pub mod epics;
 
 pub mod system;
 pub mod record;
-pub mod context;
+pub mod command;
 
 pub mod devsup;
 

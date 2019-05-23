@@ -3,8 +3,9 @@ name = "epics"
 version = "0.1.0"
 authors = ["Alexey Gerasev <alexey.gerasev@gmail.com>"]
 edition = "2018"
+documentation = "https://binp-automation.github.io/epics-rs/target/doc/epics/"
 
 [dependencies]
 libc = "0.2"
 lazy_static = "1.3.0"
-epics-sys = { git = "https://github.com/binp-automation/epics-sys", ref = "466d794fa041e6a587cfc2adfa0d4071edd0353e" }
+epics-sys = { git = "https://github.com/binp-automation/epics-sys", rev = "81ff86e4544c75303fe9f5eef57f6a9ded2d30e4" }

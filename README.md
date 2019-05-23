@@ -1,5 +1,9 @@
-# rust-epics-devsup
+# epics-rs
 
-Rust bindings for EPICS Device Support API
+Rust bindings for EPICS control system
 
-This library is a part of [epics-devsup-template](https://github.com/binp-automation/epics-devsup-template) project.
+## [Documentation](https://binp-automation.github.io/epics-rs/target/doc/epics/)
+
+## Usage
+
+You can find the example in [devsup-template](https://github.com/binp-automation/devsup-template) project.

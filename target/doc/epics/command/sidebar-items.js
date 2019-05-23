@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ArgType",""]],"struct":[["ArgBuf",""],["ArgDef",""],["FuncDef",""]],"trait":[["AsType",""]]});

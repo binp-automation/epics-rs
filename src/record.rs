@@ -76,11 +76,12 @@ pub struct Private {
     scan: Scan,
 }
 
-/// Common EPICS record
+/// Record base that is common for all records
 pub struct RecordBase {
     raw: &'static mut dbCommon,
 }
 
+unsafe impl Send for RecordBase {}
 impl RecordBase {
     pub unsafe fn from_raw(raw: *mut dbCommon) -> Self {
         Self { raw: raw.as_mut().unwrap() }
@@ -128,11 +129,12 @@ impl RecordBase {
     }
 }
 
-/// ai record
+/// Analog input record
 pub struct AiRecord {
     raw: &'static mut aiRecord,
     base: RecordBase,
 }
+unsafe impl Send for AiRecord {}
 
 impl Record for AiRecord {
     type Raw = *mut aiRecord;
@@ -176,11 +178,12 @@ impl Into<ReadRecord> for AiRecord {
     }
 }
 
-/// ao record
+/// Analog output record
 pub struct AoRecord {
     raw: &'static mut aoRecord,
     base: RecordBase,
 }
+unsafe impl Send for AoRecord {}
 
 impl Record for AoRecord {
     type Raw = *mut aoRecord;
@@ -224,11 +227,12 @@ impl Into<WriteRecord> for AoRecord {
     }
 }
 
-/// bi record
+/// Binary input record
 pub struct BiRecord {
     raw: &'static mut biRecord,
     base: RecordBase,
 }
+unsafe impl Send for BiRecord {}
 
 impl Record for BiRecord {
     type Raw = *mut biRecord;
@@ -272,11 +276,12 @@ impl Into<ReadRecord> for BiRecord {
     }
 }
 
-/// bo record
+/// Binary output record
 pub struct BoRecord {
     raw: &'static mut boRecord,
     base: RecordBase,
 }
+unsafe impl Send for BoRecord {}
 
 impl Record for BoRecord {
     type Raw = *mut boRecord;
@@ -320,11 +325,12 @@ impl Into<WriteRecord> for BoRecord {
     }
 }
 
-/// longin record
+/// Integer input record
 pub struct LonginRecord {
     raw: &'static mut longinRecord,
     base: RecordBase,
 }
+unsafe impl Send for LonginRecord {}
 
 impl Record for LonginRecord {
     type Raw = *mut longinRecord;
@@ -368,11 +374,12 @@ impl Into<ReadRecord> for LonginRecord {
     }
 }
 
-/// longout record
+/// Integer output record
 pub struct LongoutRecord {
     raw: &'static mut longoutRecord,
     base: RecordBase,
 }
+unsafe impl Send for LongoutRecord {}
 
 impl Record for LongoutRecord {
     type Raw = *mut longoutRecord;
@@ -417,11 +424,12 @@ impl Into<WriteRecord> for LongoutRecord {
 }
 
 
-/// stringin record
+/// String input record
 pub struct StringinRecord {
     raw: &'static mut stringinRecord,
     base: RecordBase,
 }
+unsafe impl Send for StringinRecord {}
 
 impl Record for StringinRecord {
     type Raw = *mut stringinRecord;
@@ -465,11 +473,12 @@ impl Into<ReadRecord> for StringinRecord {
     }
 }
 
-/// stringout record
+/// String output record
 pub struct StringoutRecord {
     raw: &'static mut stringoutRecord,
     base: RecordBase,
 }
+unsafe impl Send for StringoutRecord {}
 
 impl Record for StringoutRecord {
     type Raw = *mut stringoutRecord;
@@ -513,7 +522,7 @@ impl Into<WriteRecord> for StringoutRecord {
     }
 }
 
-// any record
+/// Any record
 pub enum AnyRecord {
     Ai(AiRecord),
     Ao(AoRecord),
@@ -554,6 +563,7 @@ impl DerefMut for AnyRecord {
     }
 }
 
+/// Readable record
 pub enum ReadRecord {
     Ai(AiRecord),
     Bi(BiRecord),
@@ -583,6 +593,7 @@ impl DerefMut for ReadRecord {
     }
 }
 
+/// Writeable record
 pub enum WriteRecord {
     Ao(AoRecord),
     Bo(BoRecord),
@@ -611,7 +622,7 @@ impl DerefMut for WriteRecord {
     }
 }
 
-
+/// Record that can preform linear conversion (is not used yet)
 pub enum LinconvRecord {
     Ai(AiRecord),
     Ao(AoRecord),

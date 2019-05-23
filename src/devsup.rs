@@ -1,13 +1,17 @@
 use epics_sys::{dbCommon, IOSCANPVT};
 
-use crate::record::{Scan, Record, RecordBase, AnyRecord, ReadRecord, WriteRecord};
+use crate::record::*;
+use crate::context::*;
+
+use crate::asyncio;
 
 
 pub unsafe fn record_init<R, F>(raw: R::Raw, f: F)
-where R: Record + Into<AnyRecord>, F: Fn(&mut AnyRecord) {
+where R: Record + Into<AnyRecord>, F: Fn(&mut RecInitContext, &mut AnyRecord) {
     let mut rec = R::from_raw(raw);
     rec.init_raw();
-    f(&mut rec.into());
+    let mut ctx = RecInitContext::new();
+    f(&mut ctx, &mut rec.into());
 }
 
 pub unsafe fn record_set_scan<F>(
@@ -15,46 +19,56 @@ pub unsafe fn record_set_scan<F>(
     raw: *mut dbCommon,
     ppvt: *mut IOSCANPVT,
     f: F,
-) where F: Fn(&mut RecordBase, Scan) {
+) where F: Fn(&mut RecScanContext, &mut RecordBase, Scan) {
     let mut rec = RecordBase::from_raw(raw);
     let scan = rec.get_scan().clone();
     *ppvt = *scan.as_raw();
-    f(&mut rec, scan.clone());
+    let mut ctx = RecScanContext::new();
+    f(&mut ctx, &mut rec, scan.clone());
 }
 
 pub unsafe fn record_read<R, F>(raw: R::Raw, f: F)
-where R: Record + Into<ReadRecord>, F: Fn(&mut ReadRecord) {
+where R: Record + Into<ReadRecord>, F: Fn(&mut RecRdContext, &mut ReadRecord) {
     let mut rec = R::from_raw(raw).into();
     if !rec.pact() {
-        f(&mut rec);
+        let mut ctx = RecRdContext::new();
+        f(&mut ctx, &mut rec);
         if rec.pact() {
-            
+            asyncio::record_read(rec);
         }
     }
 }
 
 pub unsafe fn record_write<R, F>(raw: R::Raw, f: F)
-where R: Record + Into<WriteRecord>, F: Fn(&mut WriteRecord) {
+where R: Record + Into<WriteRecord>, F: Fn(&mut RecWrContext, &mut WriteRecord) {
     let mut rec = R::from_raw(raw).into();
     if !rec.pact() {
-        f(&mut rec);
+        let mut ctx = RecWrContext::new();
+        f(&mut ctx, &mut rec);
         if rec.pact() {
-
+            asyncio::record_write(rec);
         }
     }
 }
 
 #[macro_export]
 macro_rules! bind_device_support {
+    ( $( $x:path ),* ) => {
+        $crate::bind_device_support!( $( $x, )* );
+    };
     (
-        $init:ident,
-        $record_init:ident,
-        $record_set_scan:ident,
-        $record_read:ident,
-        $record_write:ident
+        $init:path,
+        $quit:path,
+        $record_init:path,
+        $record_set_scan:path,
+        $record_read:path,
+        $record_write:path,
     ) => {
-        bind_device_support!(
+        $crate::_bind_device_support_init!(
             $init,
+            $quit,
+        );
+        $crate::_bind_device_support_record!(
             $record_init,
             $record_set_scan,
             $record_read,
@@ -62,22 +76,77 @@ macro_rules! bind_device_support {
         );
     };
     (
-        $init:ident,
-        $record_init:ident,
-        $record_set_scan:ident,
-        $record_read:ident,
-        $record_write:ident,
+        $init:path,
+        $quit:path,
+        $record_init:path,
+        $record_set_scan:path,
+        $record_read:path,
+        $record_write:path,
+        $record_read_async:path,
+        $record_write_async:path,
+    ) => {
+        $crate::_bind_device_support_init!(
+            $init,
+            $quit,
+            $record_read_async,
+            $record_write_async,
+        );
+        $crate::_bind_device_support_record!(
+            $record_init,
+            $record_set_scan,
+            $record_read,
+            $record_write,
+        );
+    }
+}
+
+#[macro_export]
+macro_rules! _bind_device_support_init {
+    (
+        $init:path,
+        $quit:path,
     ) => {
         #[no_mangle]
         extern fn rsbind_init() {
-            $init();
+            $init(unsafe { &mut $crate::context::InitContext::new() });
         }
 
         #[no_mangle]
         extern fn rsbind_quit() {
-            unimplemented!()
+            $quit(unsafe { &mut $crate::context::QuitContext::new() });
+        }
+    };
+    (
+        $init:path,
+        $quit:path,
+        $record_read_async:path,
+        $record_write_async:path,
+    ) => {
+        #[no_mangle]
+        extern fn rsbind_init() {
+            unsafe { $crate::asyncio::start_loop(
+                $record_read_async,
+                $record_write_async,
+            ); }
+            $init(unsafe { &mut $crate::context::InitContext::new() });
         }
 
+        #[no_mangle]
+        extern fn rsbind_quit() {
+            $quit(unsafe { &mut $crate::context::QuitContext::new() });
+            unsafe { $crate::asyncio::stop_loop(); }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! _bind_device_support_record {
+    (
+        $record_init:path,
+        $record_set_scan:path,
+        $record_read:path,
+        $record_write:path,
+    ) => {
         // any record
 
         #[no_mangle]
@@ -239,7 +308,7 @@ macro_rules! bind_device_support {
             unsafe { $crate::devsup::record_write::<StringoutRecord, _>(rec, $record_write); }
             0
         }
-    }
+    };
 }
 
 #[cfg(test)]
@@ -250,33 +319,48 @@ mod test {
         bind_device_support,
         register_command,
         record::*,
+        context::*,
     };
 
-    fn init() {
+
+    fn init(context: &mut InitContext) {
         println!("[devsup] init");
-        register_command!(fn test_command(a: i32, b: f64, c: &str) {
+        register_command!(context, fn test_command(a: i32, b: f64, c: &str) {
             println!("[devsup] test_command({}, {}, {})", a, b, c);
         });
     }
-
-    fn record_init(record: &mut AnyRecord) {
+    fn quit(_context: &mut QuitContext) {
+        println!("[devsup] quit");
+    }
+    fn record_init(_context: &mut RecInitContext, record: &mut AnyRecord) {
         println!("[devsup] record_init {}", from_utf8(record.name()).unwrap());
     }
-    fn record_set_scan(record: &mut RecordBase, _scan: Scan) {
+    fn record_set_scan(_context: &mut RecScanContext, record: &mut RecordBase, _scan: Scan) {
         println!("[devsup] record_set_scan {}", from_utf8(record.name()).unwrap());
     }
-    fn record_read(record: &mut ReadRecord) {
+    fn record_read(context: &mut RecRdContext, record: &mut ReadRecord) {
         println!("[devsup] record_read {}", from_utf8(record.name()).unwrap());
+        context.request_async(record);
     }
-    fn record_write(record: &mut WriteRecord) {
+    fn record_write(context: &mut RecWrContext, record: &mut WriteRecord) {
         println!("[devsup] record_write {}", from_utf8(record.name()).unwrap());
+        context.request_async(record);
+    }
+    fn record_read_async(_context: &mut RecRdAContext, record: &mut ReadRecord) {
+        println!("[devsup] record_read_async {}", from_utf8(record.name()).unwrap());
+    }
+    fn record_write_async(_context: &mut RecWrAContext, record: &mut WriteRecord) {
+        println!("[devsup] record_write_async {}", from_utf8(record.name()).unwrap());
     }
 
     bind_device_support!(
         init,
+        quit,
         record_init,
         record_set_scan,
         record_read,
-        record_write
+        record_write,
+        record_read_async,
+        record_write_async,
     );
 }

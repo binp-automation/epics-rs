@@ -2,12 +2,11 @@ use std::cell::Cell;
 use std::thread::{self, JoinHandle};
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::sync::Mutex;
-use std::str::from_utf8;
 
 use lazy_static::lazy_static;
 
-use crate::record::{Scan, Record, AnyRecord, ReadRecord, WriteRecord};
-use crate::devsup::{DeviceSupport};
+use crate::record::{ReadRecord, WriteRecord};
+use crate::context::{RecRdAContext, RecWrAContext};
 
 pub(crate) enum Message {
     Break,
@@ -20,7 +19,6 @@ struct Handler {
     thread: JoinHandle<()>,
 }
 
-
 lazy_static! {
     static ref HANDLER: Mutex<Option<Handler>> = Mutex::new(None);
 }
@@ -30,32 +28,36 @@ thread_local! {
 }
 
 fn handler_loop<FR, FW>(channel: Receiver<Message>, fr: FR, fw: FW)
-where FR: Fn(&mut ReadRecord), FW: Fn(&mut WriteRecord) {
+where FR: Fn(&mut RecRdAContext, &mut ReadRecord),
+      FW: Fn(&mut RecWrAContext, &mut WriteRecord) {
     loop {
         match channel.recv().unwrap() {
             Message::Break => break,
             Message::Read(mut rec) => {
-                fr(&mut rec);
-                rec.process();
+                let mut ctx = unsafe { RecRdAContext::new() };
+                fr(&mut ctx, &mut rec);
+                unsafe { rec.process() };
             },
             Message::Write(mut rec) => {
-                fw(&mut rec);
-                rec.process();
+                let mut ctx = unsafe { RecRdAContext::new() };
+                fw(&mut ctx, &mut rec);
+                unsafe { rec.process() };
             },
         }
     }
 }
 
-pub fn init(devsup: Box<DeviceSupport + Send>) {
-    println!("[rsbind] init");
+pub unsafe fn start_loop<FR, FW>(fr: FR, fw: FW)
+where FR: 'static + Fn(&mut RecRdAContext, &mut ReadRecord) + Send,
+      FW: 'static + Fn(&mut RecWrAContext, &mut WriteRecord) + Send {
     let (tx, rx) = mpsc::channel();
-    let jh = thread::spawn(move || handler_loop(rx));
+    let jh = thread::spawn(move || handler_loop(rx, fr, fw));
     let mut guard = HANDLER.lock().unwrap();
-    *guard = Some(Handler { devsup, channel: tx, thread: jh })
+    assert!(guard.is_none());
+    *guard = Some(Handler { channel: tx, thread: jh })
 }
 
-pub(crate) fn quit() {
-    println!("[rsbind] quit");
+pub unsafe fn stop_loop() {
     let handler = {
         let mut guard = HANDLER.lock().unwrap();
         guard.take().unwrap()
@@ -75,22 +77,14 @@ fn with_channel<F: FnOnce(&Sender<Message>)>(f: F) {
     });
 }
 
-pub fn record_write(mut record: WriteRecord) {
-    println!("[rsbind] record_write({})", from_utf8(record.name()).unwrap());
-    if !record.pact() {
-        record.set_pact(true);
-        with_channel(|channel| {
-            channel.send(Message::Write(record)).unwrap();
-        });
-    }
+pub unsafe fn record_write(record: WriteRecord) {
+    with_channel(|channel| {
+        channel.send(Message::Write(record)).unwrap();
+    });
 }
 
-pub fn record_read(mut record: ReadRecord) {
-    println!("[rsbind] record_read({})", from_utf8(record.name()).unwrap());
-    if !record.pact() {
-        record.set_pact(true);
-        with_channel(|channel| {
-            channel.send(Message::Read(record)).unwrap();
-        });
-    }
+pub unsafe fn record_read(record: ReadRecord) {
+    with_channel(|channel| {
+        channel.send(Message::Read(record)).unwrap();
+    });
 }

@@ -150,15 +150,28 @@ impl<'a> ArgBuf<'a> {
 
 #[macro_export]
 macro_rules! _replace {
-    ($_t:tt, $sub:expr) => {$sub};
+    ($_t:tt, $sub:expr) => { $sub };
 }
 
 #[macro_export]
 macro_rules! register_command {
-    ( fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* ) $fn_body:block ) => {
-        register_command!(fn $fn_name ( $( $arg_name : $arg_type ),* ) -> () $fn_body);
+    (
+        $context:expr, 
+        fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* )
+        $fn_body:block
+    ) => {
+        $crate::register_command!(
+            $context, 
+            fn $fn_name ( $( $arg_name : $arg_type ),* ) -> ()
+            $fn_body
+        );
     };
-    ( fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* ) -> () $fn_body:block ) => {
+    (
+        $context:expr, 
+        fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* ) -> ()
+        $fn_body:block
+    ) => {
+        let _: &mut InitContext = $context;
         extern "C" fn wrapper(args: *const $crate::epics_sys::iocshArgBuf) {
             fn user_func( $( $arg_name : $arg_type ),* ) $fn_body
             let len = {<[()]>::len(&[ $( $crate::_replace!($arg_type, ()) ),* ])};

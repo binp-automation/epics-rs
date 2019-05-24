@@ -23,8 +23,8 @@ fn copy_cstr_from_slice(dst: &mut [c_char], src: &[u8]) {
         src
     };
     let src = unsafe{ &*( src as *const [u8] as *const [i8] ) };
-    dst[..maxlen].copy_from_slice(src);
-    dst[src.len() + 1] = b'\0' as i8;
+    dst[..src.len()].copy_from_slice(src);
+    dst[src.len()] = b'\0' as i8;
 }
 
 fn cstr_to_slice(src: &[c_char]) -> &[u8] {

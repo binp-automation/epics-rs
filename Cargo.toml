@@ -1,6 +1,6 @@
 [package]
 name = "epics"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Alexey Gerasev <alexey.gerasev@gmail.com>"]
 edition = "2018"
 documentation = "https://binp-automation.github.io/epics-rs/target/doc/epics/"

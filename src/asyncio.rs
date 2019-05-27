@@ -6,7 +6,6 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::record::{ReadRecord, WriteRecord};
-use crate::context::{RecRdAContext, RecWrAContext};
 
 pub(crate) enum Message {
     Break,
@@ -28,19 +27,17 @@ thread_local! {
 }
 
 fn handler_loop<FR, FW>(channel: Receiver<Message>, fr: FR, fw: FW)
-where FR: Fn(&mut RecRdAContext, &mut ReadRecord),
-      FW: Fn(&mut RecWrAContext, &mut WriteRecord) {
+where FR: Fn(&mut ReadRecord),
+      FW: Fn(&mut WriteRecord) {
     loop {
         match channel.recv().unwrap() {
             Message::Break => break,
             Message::Read(mut rec) => {
-                let mut ctx = unsafe { RecRdAContext::new() };
-                fr(&mut ctx, &mut rec);
+                fr(&mut rec);
                 unsafe { rec.process() };
             },
             Message::Write(mut rec) => {
-                let mut ctx = unsafe { RecRdAContext::new() };
-                fw(&mut ctx, &mut rec);
+                fw(&mut rec);
                 unsafe { rec.process() };
             },
         }
@@ -48,8 +45,8 @@ where FR: Fn(&mut RecRdAContext, &mut ReadRecord),
 }
 
 pub unsafe fn start_loop<FR, FW>(fr: FR, fw: FW)
-where FR: 'static + Fn(&mut RecRdAContext, &mut ReadRecord) + Send,
-      FW: 'static + Fn(&mut RecWrAContext, &mut WriteRecord) + Send {
+where FR: 'static + Fn(&mut ReadRecord) + Send,
+      FW: 'static + Fn(&mut WriteRecord) + Send {
     let (tx, rx) = mpsc::channel();
     let jh = thread::spawn(move || handler_loop(rx, fr, fw));
     let mut guard = HANDLER.lock().unwrap();

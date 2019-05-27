@@ -1,37 +1,38 @@
-use epics_sys::{dbCommon, IOSCANPVT};
+//use epics_sys::{dbCommon, IOSCANPVT};
 
 use crate::record::*;
-use crate::context::*;
+use crate::context::Context;
 
-use crate::asyncio;
+//use crate::asyncio;
 
 
-pub unsafe fn record_init<R, F>(raw: R::Raw, f: F)
-where R: Record + Into<AnyRecord>, F: Fn(&mut RecInitContext, &mut AnyRecord) {
-    let mut rec = R::from_raw(raw);
-    rec.init_raw();
-    let mut ctx = RecInitContext::new();
-    f(&mut ctx, &mut rec.into());
+pub unsafe fn record_init<'a, R: 'a, F>(raw: *mut R, f: F)
+where R: Record, &'a mut R: Into<AnyRecordRef<'a>>, F: Fn(&mut Context, AnyRecordRef) {
+    let rec = raw.as_mut().unwrap();
+    rec.init();
+    let mut ctx = Context::new();
+    f(&mut ctx, rec.into());
+    // TODO: set private
 }
-
-pub unsafe fn record_set_scan<F>(
+/*
+pub unsafe fn record_set_scan<R, F>(
     _detach: bool,
-    raw: *mut dbCommon,
+    raw: *mut R,
     ppvt: *mut IOSCANPVT,
     f: F,
-) where F: Fn(&mut RecScanContext, &mut RecordBase, Scan) {
+) where R: Record, F: Fn(&mut Context, &mut RecordBase, Scan) {
     let mut rec = RecordBase::from_raw(raw);
     let scan = rec.get_scan().clone();
     *ppvt = *scan.as_raw();
-    let mut ctx = RecScanContext::new();
+    let mut ctx = Context::new();
     f(&mut ctx, &mut rec, scan.clone());
 }
 
 pub unsafe fn record_read<R, F>(raw: R::Raw, f: F)
-where R: Record + Into<ReadRecord>, F: Fn(&mut RecRdContext, &mut ReadRecord) {
+where R: Record + Into<ReadRecord>, F: Fn(&mut Context, &mut ReadRecord) {
     let mut rec = R::from_raw(raw).into();
     if !rec.pact() {
-        let mut ctx = RecRdContext::new();
+        let mut ctx = Context::new();
         f(&mut ctx, &mut rec);
         if rec.pact() {
             asyncio::record_read(rec);
@@ -40,17 +41,17 @@ where R: Record + Into<ReadRecord>, F: Fn(&mut RecRdContext, &mut ReadRecord) {
 }
 
 pub unsafe fn record_write<R, F>(raw: R::Raw, f: F)
-where R: Record + Into<WriteRecord>, F: Fn(&mut RecWrContext, &mut WriteRecord) {
+where R: Record + Into<WriteRecord>, F: Fn(&mut Context, &mut WriteRecord) {
     let mut rec = R::from_raw(raw).into();
     if !rec.pact() {
-        let mut ctx = RecWrContext::new();
+        let mut ctx = Context::new();
         f(&mut ctx, &mut rec);
         if rec.pact() {
             asyncio::record_write(rec);
         }
     }
 }
-
+*/
 #[macro_export]
 macro_rules! bind_device_support {
     ( $( $x:path ),* ) => {
@@ -108,12 +109,12 @@ macro_rules! _bind_device_support_init {
     ) => {
         #[no_mangle]
         extern fn rsbind_init() {
-            $init(unsafe { &mut $crate::context::InitContext::new() });
+            $init(unsafe { &mut $crate::context::Context::new() });
         }
 
         #[no_mangle]
         extern fn rsbind_quit() {
-            $quit(unsafe { &mut $crate::context::QuitContext::new() });
+            $quit(unsafe { &mut $crate::context::Context::new() });
         }
     };
     (
@@ -128,12 +129,12 @@ macro_rules! _bind_device_support_init {
                 $record_read_async,
                 $record_write_async,
             ); }
-            $init(unsafe { &mut $crate::context::InitContext::new() });
+            $init(unsafe { &mut $crate::context::Context::new() });
         }
 
         #[no_mangle]
         extern fn rsbind_quit() {
-            $quit(unsafe { &mut $crate::context::QuitContext::new() });
+            $quit(unsafe { &mut $crate::context::Context::new() });
             unsafe { $crate::asyncio::stop_loop(); }
         }
     }
@@ -192,6 +193,7 @@ macro_rules! _bind_device_support_record {
             unsafe { $crate::devsup::record_init::<AoRecord, _>(rec, $record_init); }
             0
         }
+
         #[no_mangle]
         extern fn rsbind_ao_write_ao(
             rec: *mut $crate::epics_sys::aoRecord,
@@ -207,6 +209,7 @@ macro_rules! _bind_device_support_record {
             0
         }
 
+        /*
         // bi record
 
         #[no_mangle]
@@ -308,9 +311,11 @@ macro_rules! _bind_device_support_record {
             unsafe { $crate::devsup::record_write::<StringoutRecord, _>(rec, $record_write); }
             0
         }
+        */
     };
 }
 
+/*
 #[cfg(test)]
 mod test {
     use std::str::from_utf8;
@@ -323,33 +328,33 @@ mod test {
     };
 
 
-    fn init(context: &mut InitContext) {
+    fn init(context: &mut Context) {
         println!("[devsup] init");
         register_command!(context, fn test_command(a: i32, b: f64, c: &str) {
             println!("[devsup] test_command({}, {}, {})", a, b, c);
         });
     }
-    fn quit(_context: &mut QuitContext) {
+    fn quit(_context: &mut Context) {
         println!("[devsup] quit");
     }
-    fn record_init(_context: &mut RecInitContext, record: &mut AnyRecord) {
+    fn record_init(_context: &mut Context, record: &mut AnyRecord) {
         println!("[devsup] record_init {}", from_utf8(record.name()).unwrap());
     }
-    fn record_set_scan(_context: &mut RecScanContext, record: &mut RecordBase, _scan: Scan) {
+    fn record_set_scan(_context: &mut Context, record: &mut RecordBase, _scan: Scan) {
         println!("[devsup] record_set_scan {}", from_utf8(record.name()).unwrap());
     }
-    fn record_read(context: &mut RecRdContext, record: &mut ReadRecord) {
+    fn record_read(context: &mut Context, record: &mut ReadRecord) {
         println!("[devsup] record_read {}", from_utf8(record.name()).unwrap());
         context.request_async(record);
     }
-    fn record_write(context: &mut RecWrContext, record: &mut WriteRecord) {
+    fn record_write(context: &mut Context, record: &mut WriteRecord) {
         println!("[devsup] record_write {}", from_utf8(record.name()).unwrap());
         context.request_async(record);
     }
-    fn record_read_async(_context: &mut RecRdAContext, record: &mut ReadRecord) {
+    fn record_read_async(_context: &mut Context, record: &mut ReadRecord) {
         println!("[devsup] record_read_async {}", from_utf8(record.name()).unwrap());
     }
-    fn record_write_async(_context: &mut RecWrAContext, record: &mut WriteRecord) {
+    fn record_write_async(_context: &mut Context, record: &mut WriteRecord) {
         println!("[devsup] record_write_async {}", from_utf8(record.name()).unwrap());
     }
 
@@ -364,3 +369,4 @@ mod test {
         record_write_async,
     );
 }
+*/

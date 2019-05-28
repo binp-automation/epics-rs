@@ -6,7 +6,7 @@ pub mod context;
 
 pub mod command;
 pub mod devsup;
-//pub mod asyncio;
+pub mod asyncio;
 
 mod util;
 

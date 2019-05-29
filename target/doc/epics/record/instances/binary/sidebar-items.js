@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["BiPrivate",""],["BiRecord","Binary input record"],["BoPrivate",""],["BoRecord","Binary input record"]],"trait":[["BiHandler",""],["BoHandler",""]]});

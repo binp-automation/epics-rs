@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["CommonPrivate","Common private data"]],"trait":[["FromRaw","Record that could be emerged from raw pointer"],["Private","Private data in record"],["ReadRecord","Readable record behavior"],["Record","Behavior that is common for all records"],["ScanRecord","Scannable record behavior"],["WriteRecord","Writable record behavior"]]});

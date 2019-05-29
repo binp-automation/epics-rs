@@ -193,7 +193,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ffi</span>::{<span class="ident">CStr</span>, <span class="ident">CString</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ptr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Mutex</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">BTreeMap</span>;
 
 <span class="kw">use</span> <span class="ident">libc</span>::{<span class="ident">c_int</span>};
 
@@ -206,7 +206,7 @@
 };
 
 <span class="macro">lazy_static</span><span class="macro">!</span> {
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">COMMANDS</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">CString</span>, <span class="ident">FuncDef</span><span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">HashMap</span>::<span class="ident">new</span>());
+    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">COMMANDS</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">CString</span>, <span class="ident">FuncDef</span><span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">BTreeMap</span>::<span class="ident">new</span>());
 }
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
@@ -362,7 +362,7 @@
         <span class="kw">fn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fn_name</span>:<span class="ident">ident</span> ( $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_name</span>:<span class="ident">ident</span> : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_type</span>:<span class="ident">ty</span> ),<span class="op">*</span> ) <span class="op">-&gt;</span> ()
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fn_body</span>:<span class="ident">block</span>
     ) <span class="op">=&gt;</span> {
-        <span class="kw">let</span> <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">InitContext</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">context</span>;
+        <span class="kw">let</span> <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">context</span>::<span class="ident">Context</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">context</span>;
         <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">wrapper</span>(<span class="ident">args</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">epics_sys</span>::<span class="ident">iocshArgBuf</span>) {
             <span class="kw">fn</span> <span class="ident">user_func</span>( $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_name</span> : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_type</span> ),<span class="op">*</span> ) <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fn_body</span>
             <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> {<span class="op">&lt;</span>[()]<span class="op">&gt;</span>::<span class="ident">len</span>(<span class="kw-2">&amp;</span>[ $( <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">_replace</span><span class="op">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_type</span>, ()) ),<span class="op">*</span> ])};

@@ -1,1 +1,1 @@
-initSidebarItems({"macro":[["_bind_device_support_init",""],["_bind_device_support_record",""],["_replace",""],["bind_device_support",""],["register_command",""]],"mod":[["asyncio",""],["command",""],["context",""],["devsup",""],["record",""]]});
+initSidebarItems({"macro":[["_bind_record_init",""],["_bind_record_linconv",""],["_bind_record_read",""],["_bind_record_set_scan",""],["_bind_record_write",""],["_replace",""],["bind_device_support",""],["register_command",""]],"mod":[["async_proc",""],["command",""],["context",""],["device_support",""],["record",""]]});

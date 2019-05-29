@@ -3,16 +3,13 @@ use epics_sys::{biRecord, boRecord};
 
 use crate::record::{
     Scan, RecordType, FromRaw, Private, CommonPrivate,
-    ScanRecord, ReadRecord, WriteRecord,
     ScanHandler, ReadHandler, WriteHandler,
 };
 
 
 // Binary input
 
-pub trait BiHandler: ScanHandler<BiRecord> + ReadHandler<BiRecord> {
-    fn linconv(&mut self, record: &mut BiRecord, after: i32);
-}
+pub trait BiHandler: ScanHandler<BiRecord> + ReadHandler<BiRecord> {}
 
 pub struct BiPrivate {
     base: CommonPrivate,
@@ -51,16 +48,14 @@ impl FromRaw for BiRecord {
 derive_record!(BiRecord, BiPrivate);
 derive_scan_record!(BiRecord);
 derive_read_record!(BiRecord);
-
+derive_deref_record!(BiRecord);
 unsafe impl Send for BiRecord {}
 
 
 // Binary output
 
 // Handler for analog output record
-pub trait BoHandler: ScanHandler<BoRecord> + WriteHandler<BoRecord> {
-    fn linconv(&mut self, record: &mut BoRecord, after: i32);
-}
+pub trait BoHandler: ScanHandler<BoRecord> + WriteHandler<BoRecord> {}
 
 pub struct BoPrivate {
     base: CommonPrivate,
@@ -99,5 +94,5 @@ impl FromRaw for BoRecord {
 derive_record!(BoRecord, BoPrivate);
 derive_scan_record!(BoRecord);
 derive_write_record!(BoRecord);
-
+derive_deref_record!(BoRecord);
 unsafe impl Send for BoRecord {}

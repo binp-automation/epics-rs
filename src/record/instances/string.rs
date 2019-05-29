@@ -3,16 +3,13 @@ use crate::util::{cstr_to_slice, cstr_copy_from_slice};
 
 use crate::record::{
     Scan, RecordType, FromRaw, Private, CommonPrivate,
-    ScanRecord, ReadRecord, WriteRecord,
     ScanHandler, ReadHandler, WriteHandler,
 };
 
 
 // Analog input
 
-pub trait StringinHandler: ScanHandler<StringinRecord> + ReadHandler<StringinRecord> {
-    fn linconv(&mut self, record: &mut StringinRecord, after: i32);
-}
+pub trait StringinHandler: ScanHandler<StringinRecord> + ReadHandler<StringinRecord> {}
 
 pub struct StringinPrivate {
     base: CommonPrivate,
@@ -51,16 +48,14 @@ impl FromRaw for StringinRecord {
 derive_record!(StringinRecord, StringinPrivate);
 derive_scan_record!(StringinRecord);
 derive_read_record!(StringinRecord);
-
+derive_deref_record!(StringinRecord);
 unsafe impl Send for StringinRecord {}
 
 
 // Analog output
 
 // Handler for analog output record
-pub trait StringoutHandler: ScanHandler<StringoutRecord> + WriteHandler<StringoutRecord> {
-    fn linconv(&mut self, record: &mut StringoutRecord, after: i32);
-}
+pub trait StringoutHandler: ScanHandler<StringoutRecord> + WriteHandler<StringoutRecord> {}
 
 pub struct StringoutPrivate {
     base: CommonPrivate,
@@ -100,5 +95,5 @@ impl FromRaw for StringoutRecord {
 derive_record!(StringoutRecord, StringoutPrivate);
 derive_scan_record!(StringoutRecord);
 derive_write_record!(StringoutRecord);
-
+derive_deref_record!(StringoutRecord);
 unsafe impl Send for StringoutRecord {}

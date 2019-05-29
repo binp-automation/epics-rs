@@ -12,3 +12,6 @@ mod util;
 
 pub use record::*;
 pub use context::*;
+
+#[cfg(test)]
+mod test;

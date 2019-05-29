@@ -1,7 +1,7 @@
 
 #[macro_export]
 macro_rules! derive_deref {
-    ($Struct:ident, $Target:ident, $field:ident) => {
+    ($Struct:ident, $Target:path, $field:ident) => {
         impl std::ops::Deref for $Struct {
             type Target = $Target;
             fn deref(&self) -> &Self::Target {
@@ -11,6 +11,22 @@ macro_rules! derive_deref {
         impl std::ops::DerefMut for $Struct {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.$field
+            }
+        }
+    };
+}
+#[macro_export]
+macro_rules! derive_deref_record {
+    ($Struct:ident) => {
+        impl std::ops::Deref for $Struct {
+            type Target = crate::record::Record;
+            fn deref(&self) -> &Self::Target {
+                self
+            }
+        }
+        impl std::ops::DerefMut for $Struct {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                self
             }
         }
     };
@@ -80,7 +96,7 @@ macro_rules! derive_record {
 #[macro_export]
 macro_rules! derive_scan_record {
     ($Record:ident) => {
-        impl ScanRecord for $Record {
+        impl crate::record::ScanRecord for $Record {
             unsafe fn handler_set_scan(&mut self, scan: Scan) {
                 self.with_handler(|h, r| h.set_scan(r, scan))
             }
@@ -90,7 +106,7 @@ macro_rules! derive_scan_record {
 #[macro_export]
 macro_rules! derive_read_record {
     ($Record:ident) => {
-        impl ReadRecord for $Record {
+        impl crate::record::ReadRecord for $Record {
             unsafe fn handler_read(&mut self) -> bool {
                 self.with_handler(|h, r| h.read(r))
             }
@@ -103,7 +119,7 @@ macro_rules! derive_read_record {
 #[macro_export]
 macro_rules! derive_write_record {
     ($Record:ident) => {
-        impl WriteRecord for $Record {
+        impl crate::record::WriteRecord for $Record {
             unsafe fn handler_write(&mut self) -> bool {
                 self.with_handler(|h, r| h.write(r))
             }

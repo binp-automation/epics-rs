@@ -3,16 +3,13 @@ use epics_sys::{longinRecord, longoutRecord};
 
 use crate::record::{
     Scan, RecordType, FromRaw, Private, CommonPrivate,
-    ScanRecord, ReadRecord, WriteRecord,
     ScanHandler, ReadHandler, WriteHandler,
 };
 
 
 // Analog input
 
-pub trait LonginHandler: ScanHandler<LonginRecord> + ReadHandler<LonginRecord> {
-    fn linconv(&mut self, record: &mut LonginRecord, after: i32);
-}
+pub trait LonginHandler: ScanHandler<LonginRecord> + ReadHandler<LonginRecord> {}
 
 pub struct LonginPrivate {
     base: CommonPrivate,
@@ -51,16 +48,14 @@ impl FromRaw for LonginRecord {
 derive_record!(LonginRecord, LonginPrivate);
 derive_scan_record!(LonginRecord);
 derive_read_record!(LonginRecord);
-
+derive_deref_record!(LonginRecord);
 unsafe impl Send for LonginRecord {}
 
 
 // Analog output
 
 // Handler for analog output record
-pub trait LongoutHandler: ScanHandler<LongoutRecord> + WriteHandler<LongoutRecord> {
-    fn linconv(&mut self, record: &mut LongoutRecord, after: i32);
-}
+pub trait LongoutHandler: ScanHandler<LongoutRecord> + WriteHandler<LongoutRecord> {}
 
 pub struct LongoutPrivate {
     base: CommonPrivate,
@@ -99,5 +94,5 @@ impl FromRaw for LongoutRecord {
 derive_record!(LongoutRecord, LongoutPrivate);
 derive_scan_record!(LongoutRecord);
 derive_write_record!(LongoutRecord);
-
+derive_deref_record!(LongoutRecord);
 unsafe impl Send for LongoutRecord {}

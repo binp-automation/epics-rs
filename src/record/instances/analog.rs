@@ -1,8 +1,7 @@
 use epics_sys::{aiRecord, aoRecord};
 
 use crate::record::{
-    Scan, RecordType, FromRaw, Private, CommonPrivate,
-    Record, ScanRecord, ReadRecord, WriteRecord,
+    Scan, RecordType, FromRaw, Private, CommonPrivate, Record,
     ScanHandler, ReadHandler, WriteHandler,
 };
 
@@ -61,6 +60,7 @@ impl LinconvRecord for AiRecord {
         self.with_handler(|h, r| h.linconv(r, after))
     }
 }
+derive_deref_record!(AiRecord);
 unsafe impl Send for AiRecord {}
 
 
@@ -114,4 +114,5 @@ impl LinconvRecord for AoRecord {
         self.with_handler(|h, r| h.linconv(r, after))
     }
 }
+derive_deref_record!(AoRecord);
 unsafe impl Send for AoRecord {}

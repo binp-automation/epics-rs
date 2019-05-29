@@ -2,7 +2,7 @@ use std::slice;
 use std::ffi::{CStr, CString};
 use std::ptr;
 use std::sync::Mutex;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use libc::{c_int};
 
@@ -15,7 +15,7 @@ use epics_sys::{
 };
 
 lazy_static! {
-    static ref COMMANDS: Mutex<HashMap<CString, FuncDef>> = Mutex::new(HashMap::new());
+    static ref COMMANDS: Mutex<BTreeMap<CString, FuncDef>> = Mutex::new(BTreeMap::new());
 }
 
 #[allow(dead_code)]
@@ -171,7 +171,7 @@ macro_rules! register_command {
         fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* ) -> ()
         $fn_body:block
     ) => {
-        let _: &mut InitContext = $context;
+        let _: &mut $crate::context::Context = $context;
         extern "C" fn wrapper(args: *const $crate::epics_sys::iocshArgBuf) {
             fn user_func( $( $arg_name : $arg_type ),* ) $fn_body
             let len = {<[()]>::len(&[ $( $crate::_replace!($arg_type, ()) ),* ])};

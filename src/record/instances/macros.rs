@@ -1,5 +1,5 @@
 
-#[macro_export]
+#[macro_use]
 macro_rules! derive_deref {
     ($Struct:ident, $Target:path, $field:ident) => {
         impl std::ops::Deref for $Struct {
@@ -15,7 +15,7 @@ macro_rules! derive_deref {
         }
     };
 }
-#[macro_export]
+#[macro_use]
 macro_rules! derive_deref_record {
     ($Struct:ident) => {
         impl std::ops::Deref for $Struct {
@@ -32,7 +32,7 @@ macro_rules! derive_deref_record {
     };
 }
 
-#[macro_export]
+#[macro_use]
 macro_rules! impl_record_private {
     ($Record:ident, $Private:ident) => {
         impl $Record {
@@ -46,7 +46,7 @@ macro_rules! impl_record_private {
     }
 }
 
-#[macro_export]
+#[macro_use]
 macro_rules! impl_record_handler {
     ($Record:ident, $Handler:ident) => {
         impl $Record {
@@ -67,7 +67,7 @@ macro_rules! impl_record_handler {
     }
 }
 
-#[macro_export]
+#[macro_use]
 macro_rules! derive_record {
     ($Record:ident, $Private:ident) => {
         impl crate::record::Record for $Record {
@@ -93,7 +93,7 @@ macro_rules! derive_record {
         }
     }
 }
-#[macro_export]
+#[macro_use]
 macro_rules! derive_scan_record {
     ($Record:ident) => {
         impl crate::record::ScanRecord for $Record {
@@ -103,7 +103,7 @@ macro_rules! derive_scan_record {
         }
     }
 }
-#[macro_export]
+#[macro_use]
 macro_rules! derive_read_record {
     ($Record:ident) => {
         impl crate::record::ReadRecord for $Record {
@@ -116,7 +116,7 @@ macro_rules! derive_read_record {
         }
     }
 }
-#[macro_export]
+#[macro_use]
 macro_rules! derive_write_record {
     ($Record:ident) => {
         impl crate::record::WriteRecord for $Record {

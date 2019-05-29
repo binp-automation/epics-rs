@@ -3,7 +3,7 @@ use epics_sys::{IOSCANPVT};
 use crate::record::*;
 //use crate::context::Context;
 
-use crate::asyncio;
+use crate::async_proc;
 
 
 pub unsafe fn record_init<R, F>(raw: R::Raw, f: F)
@@ -33,7 +33,7 @@ where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
         //let mut ctx = Context::new();
         if !rec.handler_read() {
             rec.set_pact(true);
-            asyncio::record_read(rec.into());
+            async_proc::record_read(rec.into());
         }
     }
 }
@@ -45,7 +45,7 @@ where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
         //let mut ctx = Context::new();
         if !rec.handler_write() {
             rec.set_pact(true);
-            asyncio::record_write(rec.into());
+            async_proc::record_write(rec.into());
         }
     }
 }
@@ -57,7 +57,7 @@ macro_rules! _bind_record_init {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_init::<$crate::record::$rec, _>(rec, $init); }
+            unsafe { $crate::device_support::record_init::<$crate::record::$rec, _>(rec, $init); }
             0
         }
     };
@@ -71,7 +71,7 @@ macro_rules! _bind_record_set_scan {
             rec: *mut $crate::epics_sys::$raw,
             ppvt: *mut $crate::epics_sys::IOSCANPVT,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_set_scan::<$rec>(detach != 0, rec, ppvt); }
+            unsafe { $crate::device_support::record_set_scan::<$rec>(detach != 0, rec, ppvt); }
             0
         }
     }
@@ -83,7 +83,7 @@ macro_rules! _bind_record_read {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_read::<$rec>(rec); }
+            unsafe { $crate::device_support::record_read::<$rec>(rec); }
             0
         }
     };
@@ -95,7 +95,7 @@ macro_rules! _bind_record_write {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_write::<$rec>(rec); }
+            unsafe { $crate::device_support::record_write::<$rec>(rec); }
             0
         }
     };
@@ -127,7 +127,7 @@ macro_rules! bind_device_support {
     ) => {
         #[no_mangle]
         extern fn rsbind_init() {
-            unsafe { $crate::asyncio::start_loop(); }
+            unsafe { $crate::async_proc::start_loop(); }
             $init(unsafe { &mut $crate::context::Context::new() });
         }
 
@@ -142,149 +142,35 @@ macro_rules! bind_device_support {
         $crate::_bind_record_set_scan!(aoRecord, AoRecord, rsbind_ao_get_ioint_info);
         $crate::_bind_record_write!(aoRecord, AoRecord, rsbind_ao_write_ao);
         $crate::_bind_record_linconv!(aoRecord, AoRecord, rsbind_ao_special_linconv);
-
-        /*
-        #[no_mangle]
-        extern fn rsbind_ai_read_ai(
-            rec: *mut $crate::epics_sys::aiRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_read::<AiRecord, _>(rec, $record_read); }
-            0
-        }
-        #[no_mangle]
-        extern fn rsbind_ai_special_linconv(
-            _rec: *mut $crate::epics_sys::aiRecord,
-            _after: $crate::libc::c_int,
-        ) -> $crate::libc::c_long {
-            0
-        }
-
-
-        #[no_mangle]
-        extern fn rsbind_ao_init_record(
-            rec: *mut $crate::epics_sys::aoRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_init::<AoRecord, _>(rec, $record_init); }
-            0
-        }
-
-        #[no_mangle]
-        extern fn rsbind_ao_write_ao(
-            rec: *mut $crate::epics_sys::aoRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_write::<AoRecord, _>(rec, $record_write); }
-            0
-        }
-        #[no_mangle]
-        extern fn rsbind_ao_special_linconv(
-            _rec: *mut $crate::epics_sys::aoRecord,
-            _after: $crate::libc::c_int,
-        ) -> $crate::libc::c_long {
-            0
-        }
-
         // bi record
-
-        #[no_mangle]
-        extern fn rsbind_bi_init_record(
-            rec: *mut $crate::epics_sys::biRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_init::<BiRecord, _>(rec, $record_init); }
-            0
-        }
-        #[no_mangle]
-        extern fn rsbind_bi_read_bi(
-            rec: *mut $crate::epics_sys::biRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_read::<BiRecord, _>(rec, $record_read); }
-            0
-        }
+        $crate::_bind_record_init!($record_init, biRecord, BiRecord, rsbind_bi_init_record);
+        $crate::_bind_record_set_scan!(biRecord, BiRecord, rsbind_bi_get_ioint_info);
+        $crate::_bind_record_read!(biRecord, BiRecord, rsbind_bi_read_bi);
 
         // bo record
-
-        #[no_mangle]
-        extern fn rsbind_bo_init_record(
-            rec: *mut $crate::epics_sys::boRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_init::<BoRecord, _>(rec, $record_init); }
-            0
-        }
-        #[no_mangle]
-        extern fn rsbind_bo_write_bo(
-            rec: *mut $crate::epics_sys::boRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_write::<BoRecord, _>(rec, $record_write); }
-            0
-        }
+        $crate::_bind_record_init!($record_init, boRecord, BoRecord, rsbind_bo_init_record);
+        $crate::_bind_record_set_scan!(boRecord, BoRecord, rsbind_bo_get_ioint_info);
+        $crate::_bind_record_write!(boRecord, BoRecord, rsbind_bo_write_bo);
 
         // longin record
-
-        #[no_mangle]
-        extern fn rsbind_longin_init_record(
-            rec: *mut $crate::epics_sys::longinRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_init::<LonginRecord, _>(rec, $record_init); }
-            0
-        }
-        #[no_mangle]
-        extern fn rsbind_longin_read_longin(
-            rec: *mut $crate::epics_sys::longinRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_read::<LonginRecord, _>(rec, $record_read); }
-            0
-        }
+        $crate::_bind_record_init!($record_init, longinRecord, LonginRecord, rsbind_longin_init_record);
+        $crate::_bind_record_set_scan!(longinRecord, LonginRecord, rsbind_longin_get_ioint_info);
+        $crate::_bind_record_read!(longinRecord, LonginRecord, rsbind_longin_read_longin);
 
         // longout record
-
-        #[no_mangle]
-        extern fn rsbind_longout_init_record(
-            rec: *mut $crate::epics_sys::longoutRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_init::<LongoutRecord, _>(rec, $record_init); }
-            0
-        }
-        #[no_mangle]
-        extern fn rsbind_longout_write_longout(
-            rec: *mut $crate::epics_sys::longoutRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_write::<LongoutRecord, _>(rec, $record_write); }
-            0
-        }
+        $crate::_bind_record_init!($record_init, longoutRecord, LongoutRecord, rsbind_longout_init_record);
+        $crate::_bind_record_set_scan!(longoutRecord, LongoutRecord, rsbind_longout_get_ioint_info);
+        $crate::_bind_record_write!(longoutRecord, LongoutRecord, rsbind_longout_write_longout);
 
         // stringin record
-
-        #[no_mangle]
-        extern fn rsbind_stringin_init_record(
-            rec: *mut $crate::epics_sys::stringinRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_init::<StringinRecord, _>(rec, $record_init); }
-            0
-        }
-        #[no_mangle]
-        extern fn rsbind_stringin_read_stringin(
-            rec: *mut $crate::epics_sys::stringinRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_read::<StringinRecord, _>(rec, $record_read); }
-            0
-        }
+        $crate::_bind_record_init!($record_init, stringinRecord, StringinRecord, rsbind_stringin_init_record);
+        $crate::_bind_record_set_scan!(stringinRecord, StringinRecord, rsbind_stringin_get_ioint_info);
+        $crate::_bind_record_read!(stringinRecord, StringinRecord, rsbind_stringin_read_stringin);
 
         // stringout record
-
-        #[no_mangle]
-        extern fn rsbind_stringout_init_record(
-            rec: *mut $crate::epics_sys::stringoutRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_init::<StringoutRecord, _>(rec, $record_init); }
-            0
-        }
-        #[no_mangle]
-        extern fn rsbind_stringout_write_stringout(
-            rec: *mut $crate::epics_sys::stringoutRecord,
-        ) -> $crate::libc::c_long {
-            unsafe { $crate::devsup::record_write::<StringoutRecord, _>(rec, $record_write); }
-            0
-        }
-        */
+        $crate::_bind_record_init!($record_init, stringoutRecord, StringoutRecord, rsbind_stringout_init_record);
+        $crate::_bind_record_set_scan!(stringoutRecord, StringoutRecord, rsbind_stringout_get_ioint_info);
+        $crate::_bind_record_write!(stringoutRecord, StringoutRecord, rsbind_stringout_write_stringout);
     };
 }
 

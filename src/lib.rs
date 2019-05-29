@@ -5,8 +5,8 @@ pub mod record;
 pub mod context;
 
 pub mod command;
-pub mod devsup;
-pub mod asyncio;
+pub mod device_support;
+pub mod async_proc;
 
 mod util;
 

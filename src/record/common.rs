@@ -1,108 +1,32 @@
 use std::ops::DerefMut;
-use std::ptr;
 
 use libc::{c_int, c_void};
 
 use epics_sys::{
     dbCommon,
-    IOSCANPVT, scanIoInit, scanIoRequest,
-    CALLBACK, callbackSetProcess, callbackRequest,
+    CALLBACK, callbackSetProcess,
 };
 
-use crate::util::{cstr_to_slice};
+use crate::{
+    record::{
+        Scan, Callback,
+        RecordType,
+    },
+    util::{cstr_to_slice},
+};
 
 
-/// Runtime record type
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum RecordType {
-    Ai,
-    Ao,
-    Bi,
-    Bo,
-    Longin,
-    Longout,
-    Stringin,
-    Stringout,
-}
-
-pub trait ScanHandler<R: Record> {
-    /// Set scan handle for `I/O Intr` records.
-    fn set_scan(&mut self, rec: &mut R, scan: Scan);
-}
-pub trait ReadHandler<R: Record> {
-    /// Synchronous read request. *Should not block.*
-    ///
-    /// Returns:
-    /// + true is done,
-    /// + false if need to be performed asynchronously
-    fn read(&mut self, rec: &mut R) -> bool;
-    /// Asynchronous read request, may block.
-    ///
-    /// This operation is performed in separate thread
-    /// from thread pool and then notifies the EPICS.
-    fn read_async(&mut self, rec: &mut R);
-}
-pub trait WriteHandler<R: Record> {
-    /// Synchronous write request. *Should not block.*
-    ///
-    /// Returns:
-    /// + true is done,
-    /// + false if need to be performed asynchronously
-    fn write(&mut self, rec: &mut R) -> bool;
-    /// Asynchronous write request, may block.
-    ///
-    /// This operation is performed in separate thread
-    /// from thread pool and then notifies the EPICS.
-    fn write_async(&mut self, rec: &mut R);
-}
-
-#[derive(Debug, Clone)]
-pub struct Scan {
-    raw: IOSCANPVT,
-}
-impl Scan {
-    unsafe fn new() -> Self {
-        let mut scan = ptr::null_mut();
-        scanIoInit((&mut scan) as *mut _);
-        Self { raw: scan }
-    }
-    pub fn request(&self) -> Result<(),()> {
-        match unsafe { scanIoRequest(self.raw) } {
-            0 => Err(()),
-            _ => Ok(()),
-        }
-    }
-    pub unsafe fn as_raw(&self) -> &IOSCANPVT {
-        &self.raw
-    }
-}
-unsafe impl Send for Scan {}
-unsafe impl Sync for Scan {}
-
-pub struct Callback {
-    raw: CALLBACK,
-}
-impl Callback {
-    fn new(raw: CALLBACK) -> Self {
-        Self { raw }
-    }
-    pub unsafe fn request(&mut self) -> Result<(),()> {
-        match callbackRequest(&mut self.raw as *mut _) {
-            0 => Ok(()),
-            _ => Err(()),
-        }
-    }
-}
-unsafe impl Send for Callback {}
-
+/// Private data in record
 pub trait Private: DerefMut<Target=CommonPrivate> + Send {}
 
+/// Common private data
 pub struct CommonPrivate {
     rtype: RecordType,
     callback: Callback,
     scan: Option<Scan>,
 }
 
+/// Record that could be emerged from raw pointer
 pub trait FromRaw {
     type Raw;
     unsafe fn from_raw(raw: Self::Raw) -> Self;
@@ -155,6 +79,7 @@ pub trait Record {
     }
 }
 
+/// Scannable record behavior
 pub trait ScanRecord: Record {
     unsafe fn create_scan(&self) -> Scan {
         Scan::new()
@@ -168,11 +93,13 @@ pub trait ScanRecord: Record {
     unsafe fn handler_set_scan(&mut self, scan: Scan);
 }
 
+/// Readable record behavior
 pub trait ReadRecord: Record {
     unsafe fn handler_read(&mut self) -> bool;
     unsafe fn handler_read_async(&mut self);
 }
 
+/// Writable record behavior
 pub trait WriteRecord: Record {
     unsafe fn handler_write(&mut self) -> bool;
     unsafe fn handler_write_async(&mut self);

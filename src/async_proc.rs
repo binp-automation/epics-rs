@@ -5,13 +5,12 @@ use std::sync::Mutex;
 
 use lazy_static::lazy_static;
 
-use crate::record::{ReadRecord, WriteRecord};
-use crate::context::{RecRdAContext, RecWrAContext};
+use crate::record::{AnyReadRecord, AnyWriteRecord};
 
 pub(crate) enum Message {
     Break,
-    Read(ReadRecord),
-    Write(WriteRecord),
+    Read(AnyReadRecord),
+    Write(AnyWriteRecord),
 }
 
 struct Handler {
@@ -27,31 +26,25 @@ thread_local! {
     static CHANNEL: Cell<Option<Sender<Message>>> = Cell::new(None);
 }
 
-fn handler_loop<FR, FW>(channel: Receiver<Message>, fr: FR, fw: FW)
-where FR: Fn(&mut RecRdAContext, &mut ReadRecord),
-      FW: Fn(&mut RecWrAContext, &mut WriteRecord) {
+fn handler_loop(channel: Receiver<Message>) {
     loop {
         match channel.recv().unwrap() {
             Message::Break => break,
-            Message::Read(mut rec) => {
-                let mut ctx = unsafe { RecRdAContext::new() };
-                fr(&mut ctx, &mut rec);
-                unsafe { rec.process() };
+            Message::Read(mut rec) => unsafe {
+                rec.handler_read_async();
+                rec.process().unwrap();
             },
-            Message::Write(mut rec) => {
-                let mut ctx = unsafe { RecRdAContext::new() };
-                fw(&mut ctx, &mut rec);
-                unsafe { rec.process() };
+            Message::Write(mut rec) => unsafe {
+                rec.handler_write_async();
+                rec.process().unwrap();
             },
         }
     }
 }
 
-pub unsafe fn start_loop<FR, FW>(fr: FR, fw: FW)
-where FR: 'static + Fn(&mut RecRdAContext, &mut ReadRecord) + Send,
-      FW: 'static + Fn(&mut RecWrAContext, &mut WriteRecord) + Send {
+pub unsafe fn start_loop() {
     let (tx, rx) = mpsc::channel();
-    let jh = thread::spawn(move || handler_loop(rx, fr, fw));
+    let jh = thread::spawn(move || handler_loop(rx));
     let mut guard = HANDLER.lock().unwrap();
     assert!(guard.is_none());
     *guard = Some(Handler { channel: tx, thread: jh })
@@ -77,13 +70,13 @@ fn with_channel<F: FnOnce(&Sender<Message>)>(f: F) {
     });
 }
 
-pub unsafe fn record_write(record: WriteRecord) {
+pub unsafe fn record_write(record: AnyWriteRecord) {
     with_channel(|channel| {
         channel.send(Message::Write(record)).unwrap();
     });
 }
 
-pub unsafe fn record_read(record: ReadRecord) {
+pub unsafe fn record_read(record: AnyReadRecord) {
     with_channel(|channel| {
         channel.send(Message::Read(record)).unwrap();
     });

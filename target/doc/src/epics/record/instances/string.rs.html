@@ -96,7 +96,6 @@
 <span id="96">96</span>
 <span id="97">97</span>
 <span id="98">98</span>
-<span id="99">99</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">epics_sys</span>::{<span class="ident">stringinRecord</span>, <span class="ident">stringoutRecord</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">util</span>::{<span class="ident">cstr_to_slice</span>, <span class="ident">cstr_copy_from_slice</span>};
@@ -107,10 +106,11 @@
 };
 
 
-<span class="comment">// Analog input</span>
+<span class="comment">// String input</span>
 
+<span class="doccomment">/// Handler trait for string input</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">StringinHandler</span>: <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">StringinRecord</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ReadHandler</span><span class="op">&lt;</span><span class="ident">StringinRecord</span><span class="op">&gt;</span> {}
-
+<span class="doccomment">/// String input private data</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StringinPrivate</span> {
     <span class="ident">base</span>: <span class="ident">CommonPrivate</span>,
     <span class="ident">handler</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">StringinHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;&gt;</span>,
@@ -123,8 +123,7 @@
 <span class="macro">derive_deref</span><span class="macro">!</span>(<span class="ident">StringinPrivate</span>, <span class="ident">CommonPrivate</span>, <span class="ident">base</span>);
 <span class="kw">impl</span> <span class="ident">Private</span> <span class="kw">for</span> <span class="ident">StringinPrivate</span> {}
 
-
-<span class="doccomment">/// Analog input record</span>
+<span class="doccomment">/// String input record</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StringinRecord</span> {
     <span class="ident">raw</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="kw-2">mut</span> <span class="ident">stringinRecord</span>,
 }
@@ -152,11 +151,11 @@
 <span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">StringinRecord</span> {}
 
 
-<span class="comment">// Analog output</span>
+<span class="comment">// String output</span>
 
-<span class="comment">// Handler for analog output record</span>
+<span class="doccomment">/// Handler trait for string output</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">StringoutHandler</span>: <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">StringoutRecord</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">WriteHandler</span><span class="op">&lt;</span><span class="ident">StringoutRecord</span><span class="op">&gt;</span> {}
-
+<span class="doccomment">/// String output private data</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StringoutPrivate</span> {
     <span class="ident">base</span>: <span class="ident">CommonPrivate</span>,
     <span class="ident">handler</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">StringoutHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;&gt;</span>,
@@ -169,8 +168,7 @@
 <span class="macro">derive_deref</span><span class="macro">!</span>(<span class="ident">StringoutPrivate</span>, <span class="ident">CommonPrivate</span>, <span class="ident">base</span>);
 <span class="kw">impl</span> <span class="ident">Private</span> <span class="kw">for</span> <span class="ident">StringoutPrivate</span> {}
 
-
-<span class="doccomment">/// Analog input record</span>
+<span class="doccomment">/// String output record</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StringoutRecord</span> {
     <span class="ident">raw</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="kw-2">mut</span> <span class="ident">stringoutRecord</span>,
 }

@@ -95,7 +95,6 @@
 <span id="95">95</span>
 <span id="96">96</span>
 <span id="97">97</span>
-<span id="98">98</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">libc</span>::{<span class="ident">c_int</span>};
 <span class="kw">use</span> <span class="ident">epics_sys</span>::{<span class="ident">longinRecord</span>, <span class="ident">longoutRecord</span>};
@@ -106,10 +105,11 @@
 };
 
 
-<span class="comment">// Analog input</span>
+<span class="comment">// Long input</span>
 
+<span class="doccomment">/// Handler trait for long input</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">LonginHandler</span>: <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">LonginRecord</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ReadHandler</span><span class="op">&lt;</span><span class="ident">LonginRecord</span><span class="op">&gt;</span> {}
-
+<span class="doccomment">/// Long input private data</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LonginPrivate</span> {
     <span class="ident">base</span>: <span class="ident">CommonPrivate</span>,
     <span class="ident">handler</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LonginHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;&gt;</span>,
@@ -122,8 +122,7 @@
 <span class="macro">derive_deref</span><span class="macro">!</span>(<span class="ident">LonginPrivate</span>, <span class="ident">CommonPrivate</span>, <span class="ident">base</span>);
 <span class="kw">impl</span> <span class="ident">Private</span> <span class="kw">for</span> <span class="ident">LonginPrivate</span> {}
 
-
-<span class="doccomment">/// Analog input record</span>
+<span class="doccomment">/// Long (32-bit integer) input record</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LonginRecord</span> {
     <span class="ident">raw</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="kw-2">mut</span> <span class="ident">longinRecord</span>,
 }
@@ -151,11 +150,11 @@
 <span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">LonginRecord</span> {}
 
 
-<span class="comment">// Analog output</span>
+<span class="comment">// Long output</span>
 
-<span class="comment">// Handler for analog output record</span>
+<span class="doccomment">/// Handler trait for long output</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">LongoutHandler</span>: <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">LongoutRecord</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">WriteHandler</span><span class="op">&lt;</span><span class="ident">LongoutRecord</span><span class="op">&gt;</span> {}
-
+<span class="doccomment">/// Long output private data</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LongoutPrivate</span> {
     <span class="ident">base</span>: <span class="ident">CommonPrivate</span>,
     <span class="ident">handler</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LongoutHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;&gt;</span>,
@@ -168,8 +167,7 @@
 <span class="macro">derive_deref</span><span class="macro">!</span>(<span class="ident">LongoutPrivate</span>, <span class="ident">CommonPrivate</span>, <span class="ident">base</span>);
 <span class="kw">impl</span> <span class="ident">Private</span> <span class="kw">for</span> <span class="ident">LongoutPrivate</span> {}
 
-
-<span class="doccomment">/// Analog input record</span>
+<span class="doccomment">/// Long (32-bit integer) output record</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LongoutRecord</span> {
     <span class="ident">raw</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="kw-2">mut</span> <span class="ident">longoutRecord</span>,
 }

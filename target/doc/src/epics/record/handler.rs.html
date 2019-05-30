@@ -46,13 +46,13 @@
 };
 
 
-<span class="comment">// Handler for scannable records</span>
+<span class="doccomment">/// Handler for scannable records</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">ScanRecord</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Set scan handle for `I/O Intr` records.</span>
     <span class="kw">fn</span> <span class="ident">set_scan</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">rec</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>, <span class="ident">scan</span>: <span class="ident">Scan</span>);
 }
 
-<span class="comment">// Handler for records that could be read</span>
+<span class="doccomment">/// Handler for records that could be read</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ReadHandler</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">ReadRecord</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Synchronous read request. *Should not block.*</span>
     <span class="doccomment">///</span>
@@ -60,14 +60,14 @@
     <span class="doccomment">/// + true is done,</span>
     <span class="doccomment">/// + false if need to be performed asynchronously</span>
     <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">rec</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="ident">bool</span>;
-    <span class="doccomment">/// Asynchronous read request, may block.</span>
+    <span class="doccomment">/// Asynchronous read request, *may block*.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// This operation is performed in separate thread</span>
     <span class="doccomment">/// from thread pool and then notifies the EPICS.</span>
     <span class="kw">fn</span> <span class="ident">read_async</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">rec</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>);
 }
 
-<span class="comment">// Handler for records that could be written</span>
+<span class="doccomment">/// Handler for records that could be written</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">WriteHandler</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">WriteRecord</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Synchronous write request. *Should not block.*</span>
     <span class="doccomment">///</span>
@@ -75,7 +75,7 @@
     <span class="doccomment">/// + true is done,</span>
     <span class="doccomment">/// + false if need to be performed asynchronously</span>
     <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">rec</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="ident">bool</span>;
-    <span class="doccomment">/// Asynchronous write request, may block.</span>
+    <span class="doccomment">/// Asynchronous write request, *may block*.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// This operation is performed in separate thread</span>
     <span class="doccomment">/// from thread pool and then notifies the EPICS.</span>

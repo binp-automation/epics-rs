@@ -95,7 +95,6 @@
 <span id="95">95</span>
 <span id="96">96</span>
 <span id="97">97</span>
-<span id="98">98</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">libc</span>::{<span class="ident">c_ushort</span>};
 <span class="kw">use</span> <span class="ident">epics_sys</span>::{<span class="ident">biRecord</span>, <span class="ident">boRecord</span>};
@@ -108,8 +107,9 @@
 
 <span class="comment">// Binary input</span>
 
+<span class="doccomment">/// Handler trait for binary input</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BiHandler</span>: <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">BiRecord</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ReadHandler</span><span class="op">&lt;</span><span class="ident">BiRecord</span><span class="op">&gt;</span> {}
-
+<span class="doccomment">/// Binary input private data</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BiPrivate</span> {
     <span class="ident">base</span>: <span class="ident">CommonPrivate</span>,
     <span class="ident">handler</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">BiHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;&gt;</span>,
@@ -121,7 +121,6 @@
 }
 <span class="macro">derive_deref</span><span class="macro">!</span>(<span class="ident">BiPrivate</span>, <span class="ident">CommonPrivate</span>, <span class="ident">base</span>);
 <span class="kw">impl</span> <span class="ident">Private</span> <span class="kw">for</span> <span class="ident">BiPrivate</span> {}
-
 
 <span class="doccomment">/// Binary input record</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BiRecord</span> {
@@ -153,9 +152,9 @@
 
 <span class="comment">// Binary output</span>
 
-<span class="comment">// Handler for analog output record</span>
+<span class="doccomment">/// Handler trait for binary output</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BoHandler</span>: <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">BoRecord</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">WriteHandler</span><span class="op">&lt;</span><span class="ident">BoRecord</span><span class="op">&gt;</span> {}
-
+<span class="doccomment">/// Binary output private data</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BoPrivate</span> {
     <span class="ident">base</span>: <span class="ident">CommonPrivate</span>,
     <span class="ident">handler</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">BoHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;&gt;</span>,
@@ -168,8 +167,7 @@
 <span class="macro">derive_deref</span><span class="macro">!</span>(<span class="ident">BoPrivate</span>, <span class="ident">CommonPrivate</span>, <span class="ident">base</span>);
 <span class="kw">impl</span> <span class="ident">Private</span> <span class="kw">for</span> <span class="ident">BoPrivate</span> {}
 
-
-<span class="doccomment">/// Binary input record</span>
+<span class="doccomment">/// Binary output record</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BoRecord</span> {
     <span class="ident">raw</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="kw-2">mut</span> <span class="ident">boRecord</span>,
 }

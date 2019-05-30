@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Scan","Scan handle for process requests from outside"]]});

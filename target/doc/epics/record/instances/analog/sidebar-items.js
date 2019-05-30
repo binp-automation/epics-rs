@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["AiPrivate",""],["AiRecord","Analog input record"],["AoPrivate",""],["AoRecord","Analog input record"]],"trait":[["AiHandler",""],["AoHandler",""],["LinconvRecord","Record that can perform linconv (only AiRecord and AoRecord)"]]});

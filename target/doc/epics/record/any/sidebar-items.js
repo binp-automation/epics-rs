@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["AnyHandlerBox","Any boxed handler wrapper"],["AnyReadRecord","Any readable record wrapper"],["AnyRecord","Any record wrapper - could contain any record"],["AnyWriteRecord","Any writable record wrapper"],["RecordType","Record type"]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["StringinPrivate",""],["StringinRecord","Analog input record"],["StringoutPrivate",""],["StringoutRecord","Analog input record"]],"trait":[["StringinHandler",""],["StringoutHandler",""]]});

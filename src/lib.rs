@@ -1,3 +1,4 @@
+pub use log;
 pub use libc;
 pub use epics_sys;
 

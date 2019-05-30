@@ -43,6 +43,10 @@ fn overwrite_panic() {
     }));
 }
 
+pub fn check_gate() -> bool {
+    GATE.load(Ordering::SeqCst)
+}
+
 pub unsafe fn init<F>(f: F) where F: Fn(&mut Context) -> crate::Result<()> {
     overwrite_panic();
     simple_logger::init().unwrap();
@@ -59,22 +63,29 @@ pub unsafe fn init<F>(f: F) where F: Fn(&mut Context) -> crate::Result<()> {
     }
 }
 
-pub unsafe fn record_init<R, F>(raw: R::Raw, f: F)
-where R: Record + FromRaw + Into<AnyRecord>, F: Fn(&mut AnyRecord) -> crate::Result<AnyHandlerBox> {
+pub unsafe fn record_init<R, F>(raw: R::Raw, f: F) -> i32 where
+R: Record + FromRaw + Into<AnyRecord>, 
+F: Fn(&mut AnyRecord) -> crate::Result<AnyHandlerBox> {
     let mut rec = R::from_raw(raw).into();
     rec.init();
     //let mut ctx = Context::new();
     match f(&mut rec).and_then(|hdl| {
         rec.try_set_handler(hdl)
     }){
-        Ok(()) => debug!("record_init({})", lossy(rec.name())),
-        Err(e) => error!("record_init({}): {}", lossy(rec.name()), e),
+        Ok(()) => {
+            debug!("record_init({})", lossy(rec.name()));
+            0
+        },
+        Err(e) => {
+            error!("record_init({}): {}", lossy(rec.name()), e);
+            1
+        },
     }
 }
 
 pub unsafe fn record_set_scan<R>(
     _detach: bool, raw: R::Raw, ppvt: *mut IOSCANPVT
-) where R: ScanRecord + FromRaw {
+) -> i32 where R: ScanRecord + FromRaw {
     let mut rec = R::from_raw(raw);
     let scan = rec.create_scan();
     *ppvt = *scan.as_raw();
@@ -83,11 +94,17 @@ pub unsafe fn record_set_scan<R>(
     match rec.handler_set_scan(scan).unwrap_or_else(|| {
         Err(crate::Error::Other("no handler".into()))
     }) {
-        Ok(()) => debug!("record_set_scan({})", lossy(rec.name())),
-        Err(e) => error!("record_set_scan({}): {}", lossy(rec.name()), e),
+        Ok(()) => {
+            debug!("record_set_scan({})", lossy(rec.name()));
+            0
+        },
+        Err(e) => {
+            error!("record_set_scan({}): {}", lossy(rec.name()), e);
+            1
+        },
     }
 }
-pub unsafe fn record_read<R>(raw: R::Raw)
+pub unsafe fn record_read<R>(raw: R::Raw) -> i32
 where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
     let mut rec = R::from_raw(raw);
     if !rec.pact() {
@@ -101,13 +118,19 @@ where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
                     rec.set_pact(true);
                     async_proc::record_read(rec.into());
                 }
+                0
             },
-            Err(e) => error!("record_read({}): {}", lossy(rec.name()), e),
+            Err(e) => {
+                error!("record_read({}): {}", lossy(rec.name()), e);
+                1
+            },
         }
+    } else {
+        0
     }
 }
 
-pub unsafe fn record_write<R>(raw: R::Raw)
+pub unsafe fn record_write<R>(raw: R::Raw) -> i32
 where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
     let mut rec = R::from_raw(raw);
     if !rec.pact() {
@@ -121,21 +144,33 @@ where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
                     rec.set_pact(true);
                     async_proc::record_write(rec.into());
                 }
+                0
             },
-            Err(e) => error!("record_write({}): {}", lossy(rec.name()), e),
+            Err(e) => {
+                error!("record_write({}): {}", lossy(rec.name()), e);
+                1
+            },
         }
+    } else {
+        0
     }
 }
 
-pub unsafe fn record_linconv<R>(raw: R::Raw, after: i32)
+pub unsafe fn record_linconv<R>(raw: R::Raw, after: i32) -> i32
 where R: LinconvRecord + FromRaw + Into<AnalogRecord> {
     let mut rec = R::from_raw(raw);
     //let mut ctx = Context::new();
     match rec.handler_linconv(after).unwrap_or_else(|| {
         Err(crate::Error::Other("no handler".into()))
     }) {
-        Ok(()) => debug!("record_linconv({})", lossy(rec.name())),
-        Err(e) => error!("record_linconv({}): {}", lossy(rec.name()), e),
+        Ok(()) => {
+            debug!("record_linconv({})", lossy(rec.name()));
+            0
+        },
+        Err(e) => {
+            error!("record_linconv({}): {}", lossy(rec.name()), e);
+            1
+        },
     }
 }
 
@@ -146,8 +181,15 @@ macro_rules! _bind_record_init {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_init::<$crate::record::$rec, _>(rec, $init); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe {
+                    $crate::device_support::record_init::<
+                        $crate::record::$rec, _
+                    >(rec, $init) as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     };
 }
@@ -160,8 +202,15 @@ macro_rules! _bind_record_set_scan {
             rec: *mut $crate::epics_sys::$raw,
             ppvt: *mut $crate::epics_sys::IOSCANPVT,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_set_scan::<$rec>(detach != 0, rec, ppvt); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe {
+                    $crate::device_support::record_set_scan::<$rec>(
+                        detach != 0, rec, ppvt
+                    ) as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     }
 }
@@ -172,8 +221,14 @@ macro_rules! _bind_record_read {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_read::<$rec>(rec); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe { 
+                    $crate::device_support::record_read::<$rec>(rec)
+                    as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     };
 }
@@ -184,8 +239,14 @@ macro_rules! _bind_record_write {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_write::<$rec>(rec); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe {
+                    $crate::device_support::record_write::<$rec>(rec)
+                    as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     };
 }
@@ -197,8 +258,15 @@ macro_rules! _bind_record_linconv {
             rec: *mut $crate::epics_sys::$raw,
             after: $crate::libc::c_int,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_linconv::<$rec>(rec, after as i32) }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe {
+                    $crate::device_support::record_linconv::<$rec>(
+                        rec, after as i32
+                    ) as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     };
 }

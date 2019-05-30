@@ -168,22 +168,32 @@ macro_rules! register_command {
     };
     (
         $context:expr, 
-        fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* ) -> ()
+        fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* ) -> $fn_ret:ty
         $fn_body:block
     ) => {
         let _: &mut $crate::context::Context = $context;
         extern "C" fn wrapper(args: *const $crate::epics_sys::iocshArgBuf) {
-            fn user_func( $( $arg_name : $arg_type ),* ) $fn_body
+            if !$crate::device_support::check_gate() {
+                $crate::log::error!("command '{}': device support broken", stringify!($fn_name));
+                return;
+            }
+            fn user_func( $( $arg_name : $arg_type ),* ) -> $fn_ret $fn_body
             let len = {<[()]>::len(&[ $( $crate::_replace!($arg_type, ()) ),* ])};
             let arg_buf = $crate::command::ArgBuf::new(args, len);
             let mut iter = arg_buf.iter();
-            user_func($(
+            match user_func($(
                 <$arg_type as $crate::command::AsType>::from_buf(iter.next().unwrap())
-            ),*);
+            ),*) {
+                Ok(t) => $crate::log::debug!("command '{}': {:?}", stringify!($fn_name), t),
+                Err(e) => {
+                    let e: $crate::Error = e;
+                    $crate::log::error!("command '{}': {}", stringify!($fn_name), e)
+                },
+            };
         }
         $crate::command::FuncDef::new(stringify!($fn_name))
         $(
-            .arg(stringify!($fn_name), <$arg_type as $crate::command::AsType>::dtype())
+            .arg(stringify!($arg_name), <$arg_type as $crate::command::AsType>::dtype())
         )*
         .register(wrapper);
     };

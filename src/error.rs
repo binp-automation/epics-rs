@@ -38,3 +38,9 @@ impl From<String> for Error {
         Error::Other(msg)
     }
 }
+
+impl<'a> From<&'a str> for Error {
+    fn from(msg: &'a str) -> Error {
+        Error::Other(msg.to_string())
+    }
+}

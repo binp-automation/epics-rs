@@ -14,10 +14,13 @@ pub trait LinconvRecord: Record {
 
 // Analog input
 
+/// Handler trait for analog input
 pub trait AiHandler: ScanHandler<AiRecord> + ReadHandler<AiRecord> {
+    /// Linconv request
     fn linconv(&mut self, record: &mut AiRecord, after: i32);
 }
 
+/// Analog input private data
 pub struct AiPrivate {
     base: CommonPrivate,
     handler: Option<Box<dyn AiHandler + Send>>,
@@ -29,7 +32,6 @@ impl AiPrivate {
 }
 derive_deref!(AiPrivate, CommonPrivate, base);
 impl Private for AiPrivate {}
-
 
 /// Analog input record
 pub struct AiRecord {
@@ -66,11 +68,12 @@ unsafe impl Send for AiRecord {}
 
 // Analog output
 
-// Handler for analog output record
+/// Handler trait for analog output
 pub trait AoHandler: ScanHandler<AoRecord> + WriteHandler<AoRecord> {
+    /// Linconv request
     fn linconv(&mut self, record: &mut AoRecord, after: i32);
 }
-
+/// Analog output private data
 pub struct AoPrivate {
     base: CommonPrivate,
     handler: Option<Box<dyn AoHandler + Send>>,
@@ -83,8 +86,7 @@ impl AoPrivate {
 derive_deref!(AoPrivate, CommonPrivate, base);
 impl Private for AoPrivate {}
 
-
-/// Analog input record
+/// Analog output record
 pub struct AoRecord {
     raw: &'static mut aoRecord,
 }

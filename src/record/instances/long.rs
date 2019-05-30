@@ -7,10 +7,11 @@ use crate::record::{
 };
 
 
-// Analog input
+// Long input
 
+/// Handler trait for long input
 pub trait LonginHandler: ScanHandler<LonginRecord> + ReadHandler<LonginRecord> {}
-
+/// Long input private data
 pub struct LonginPrivate {
     base: CommonPrivate,
     handler: Option<Box<dyn LonginHandler + Send>>,
@@ -23,8 +24,7 @@ impl LonginPrivate {
 derive_deref!(LonginPrivate, CommonPrivate, base);
 impl Private for LonginPrivate {}
 
-
-/// Analog input record
+/// Long (32-bit integer) input record
 pub struct LonginRecord {
     raw: &'static mut longinRecord,
 }
@@ -52,11 +52,11 @@ derive_deref_record!(LonginRecord);
 unsafe impl Send for LonginRecord {}
 
 
-// Analog output
+// Long output
 
-// Handler for analog output record
+/// Handler trait for long output
 pub trait LongoutHandler: ScanHandler<LongoutRecord> + WriteHandler<LongoutRecord> {}
-
+/// Long output private data
 pub struct LongoutPrivate {
     base: CommonPrivate,
     handler: Option<Box<dyn LongoutHandler + Send>>,
@@ -69,8 +69,7 @@ impl LongoutPrivate {
 derive_deref!(LongoutPrivate, CommonPrivate, base);
 impl Private for LongoutPrivate {}
 
-
-/// Analog input record
+/// Long (32-bit integer) output record
 pub struct LongoutRecord {
     raw: &'static mut longoutRecord,
 }

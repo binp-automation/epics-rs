@@ -7,10 +7,11 @@ use crate::record::{
 };
 
 
-// Analog input
+// String input
 
+/// Handler trait for string input
 pub trait StringinHandler: ScanHandler<StringinRecord> + ReadHandler<StringinRecord> {}
-
+/// String input private data
 pub struct StringinPrivate {
     base: CommonPrivate,
     handler: Option<Box<dyn StringinHandler + Send>>,
@@ -23,8 +24,7 @@ impl StringinPrivate {
 derive_deref!(StringinPrivate, CommonPrivate, base);
 impl Private for StringinPrivate {}
 
-
-/// Analog input record
+/// String input record
 pub struct StringinRecord {
     raw: &'static mut stringinRecord,
 }
@@ -52,11 +52,11 @@ derive_deref_record!(StringinRecord);
 unsafe impl Send for StringinRecord {}
 
 
-// Analog output
+// String output
 
-// Handler for analog output record
+/// Handler trait for string output
 pub trait StringoutHandler: ScanHandler<StringoutRecord> + WriteHandler<StringoutRecord> {}
-
+/// String output private data
 pub struct StringoutPrivate {
     base: CommonPrivate,
     handler: Option<Box<dyn StringoutHandler + Send>>,
@@ -69,8 +69,7 @@ impl StringoutPrivate {
 derive_deref!(StringoutPrivate, CommonPrivate, base);
 impl Private for StringoutPrivate {}
 
-
-/// Analog input record
+/// String output record
 pub struct StringoutRecord {
     raw: &'static mut stringoutRecord,
 }

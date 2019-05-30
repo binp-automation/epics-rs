@@ -1,10 +1,10 @@
 #[macro_use]
 mod macros;
 
-pub mod analog;
-pub mod binary;
-pub mod long;
-pub mod string;
+mod analog;
+mod binary;
+mod long;
+mod string;
 
 pub use analog::*;
 pub use binary::*;

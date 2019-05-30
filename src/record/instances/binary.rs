@@ -9,8 +9,9 @@ use crate::record::{
 
 // Binary input
 
+/// Handler trait for binary input
 pub trait BiHandler: ScanHandler<BiRecord> + ReadHandler<BiRecord> {}
-
+/// Binary input private data
 pub struct BiPrivate {
     base: CommonPrivate,
     handler: Option<Box<dyn BiHandler + Send>>,
@@ -22,7 +23,6 @@ impl BiPrivate {
 }
 derive_deref!(BiPrivate, CommonPrivate, base);
 impl Private for BiPrivate {}
-
 
 /// Binary input record
 pub struct BiRecord {
@@ -54,9 +54,9 @@ unsafe impl Send for BiRecord {}
 
 // Binary output
 
-// Handler for analog output record
+/// Handler trait for binary output
 pub trait BoHandler: ScanHandler<BoRecord> + WriteHandler<BoRecord> {}
-
+/// Binary output private data
 pub struct BoPrivate {
     base: CommonPrivate,
     handler: Option<Box<dyn BoHandler + Send>>,
@@ -69,8 +69,7 @@ impl BoPrivate {
 derive_deref!(BoPrivate, CommonPrivate, base);
 impl Private for BoPrivate {}
 
-
-/// Binary input record
+/// Binary output record
 pub struct BoRecord {
     raw: &'static mut boRecord,
 }

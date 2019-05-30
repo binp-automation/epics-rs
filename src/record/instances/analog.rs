@@ -8,16 +8,15 @@ use crate::record::{
 
 /// Record that can perform linconv (only AiRecord and AoRecord)
 pub trait LinconvRecord: Record {
-    unsafe fn handler_linconv(&mut self, after: i32);
+    unsafe fn handler_linconv(&mut self, after: i32) -> Option<crate::Result<()>>;
 }
-
 
 // Analog input
 
 /// Handler trait for analog input
 pub trait AiHandler: ScanHandler<AiRecord> + ReadHandler<AiRecord> {
     /// Linconv request
-    fn linconv(&mut self, record: &mut AiRecord, after: i32);
+    fn linconv(&mut self, record: &mut AiRecord, after: i32) -> crate::Result<()>;
 }
 
 /// Analog input private data
@@ -58,7 +57,7 @@ derive_record!(AiRecord, AiPrivate);
 derive_scan_record!(AiRecord);
 derive_read_record!(AiRecord);
 impl LinconvRecord for AiRecord {
-    unsafe fn handler_linconv(&mut self, after: i32) {
+    unsafe fn handler_linconv(&mut self, after: i32) -> Option<crate::Result<()>> {
         self.with_handler(|h, r| h.linconv(r, after))
     }
 }
@@ -71,7 +70,7 @@ unsafe impl Send for AiRecord {}
 /// Handler trait for analog output
 pub trait AoHandler: ScanHandler<AoRecord> + WriteHandler<AoRecord> {
     /// Linconv request
-    fn linconv(&mut self, record: &mut AoRecord, after: i32);
+    fn linconv(&mut self, record: &mut AoRecord, after: i32) -> crate::Result<()>;
 }
 /// Analog output private data
 pub struct AoPrivate {
@@ -112,7 +111,7 @@ derive_record!(AoRecord, AoPrivate);
 derive_scan_record!(AoRecord);
 derive_write_record!(AoRecord);
 impl LinconvRecord for AoRecord {
-    unsafe fn handler_linconv(&mut self, after: i32) {
+    unsafe fn handler_linconv(&mut self, after: i32) -> Option<crate::Result<()>> {
         self.with_handler(|h, r| h.linconv(r, after))
     }
 }

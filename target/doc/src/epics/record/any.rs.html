@@ -292,6 +292,50 @@
 <span id="292">292</span>
 <span id="293">293</span>
 <span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::{<span class="ident">TryFrom</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::{<span class="ident">Deref</span>, <span class="ident">DerefMut</span>};
@@ -340,6 +384,18 @@
         }
     };
 }
+<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">try_set_handler</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">any</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rec</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {
+        <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">any</span>)
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">1</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> {
+            <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">rec</span>.<span class="ident">replace_handler</span>(<span class="ident">hdl</span>) {
+                <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="prelude-val">Err</span>(<span class="number">2</span>),
+                <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(()),
+            }
+        })
+    };
+}
+
 
 <span class="doccomment">/// Any record wrapper - could contain any record</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AnyRecord</span> {
@@ -366,33 +422,27 @@
         }
     }
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">try_set_handler</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">any</span>: <span class="ident">AnyHandlerBox</span>)
-    <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(),(<span class="ident">RecordType</span>, <span class="ident">RecordType</span>)<span class="op">&gt;</span> {
+    <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="kw">crate</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">any_type</span> <span class="op">=</span> <span class="ident">any</span>.<span class="ident">rtype</span>();
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AnyRecord</span>::<span class="ident">Ai</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span>
-                <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">AiHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="ident">any</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> { <span class="ident">rec</span>.<span class="ident">set_handler</span>(<span class="ident">hdl</span>); <span class="prelude-val">Ok</span>(()) }),
-            <span class="ident">AnyRecord</span>::<span class="ident">Ao</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> 
-                <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">AoHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="ident">any</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> { <span class="ident">rec</span>.<span class="ident">set_handler</span>(<span class="ident">hdl</span>); <span class="prelude-val">Ok</span>(()) }),
-            <span class="ident">AnyRecord</span>::<span class="ident">Bi</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span>
-                <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">BiHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="ident">any</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> { <span class="ident">rec</span>.<span class="ident">set_handler</span>(<span class="ident">hdl</span>); <span class="prelude-val">Ok</span>(()) }),
-            <span class="ident">AnyRecord</span>::<span class="ident">Bo</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> 
-                <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">BoHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="ident">any</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> { <span class="ident">rec</span>.<span class="ident">set_handler</span>(<span class="ident">hdl</span>); <span class="prelude-val">Ok</span>(()) }),
-            <span class="ident">AnyRecord</span>::<span class="ident">Longin</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span>
-                <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LonginHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="ident">any</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> { <span class="ident">rec</span>.<span class="ident">set_handler</span>(<span class="ident">hdl</span>); <span class="prelude-val">Ok</span>(()) }),
-            <span class="ident">AnyRecord</span>::<span class="ident">Longout</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> 
-                <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LongoutHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="ident">any</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> { <span class="ident">rec</span>.<span class="ident">set_handler</span>(<span class="ident">hdl</span>); <span class="prelude-val">Ok</span>(()) }),
-            <span class="ident">AnyRecord</span>::<span class="ident">Stringin</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span>
-                <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">StringinHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="ident">any</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> { <span class="ident">rec</span>.<span class="ident">set_handler</span>(<span class="ident">hdl</span>); <span class="prelude-val">Ok</span>(()) }),
-            <span class="ident">AnyRecord</span>::<span class="ident">Stringout</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> 
-                <span class="ident">Box</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">StringoutHandler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>::<span class="ident">try_from</span>(<span class="ident">any</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hdl</span><span class="op">|</span> { <span class="ident">rec</span>.<span class="ident">set_handler</span>(<span class="ident">hdl</span>); <span class="prelude-val">Ok</span>(()) }),
-        }.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">any</span><span class="op">|</span> (<span class="self">self</span>.<span class="ident">rtype</span>(), <span class="ident">any</span>.<span class="ident">rtype</span>()))
+            <span class="ident">AnyRecord</span>::<span class="ident">Ai</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> <span class="macro">try_set_handler</span><span class="macro">!</span>(<span class="ident">any</span>, <span class="ident">rec</span>, <span class="ident">AiHandler</span>),
+            <span class="ident">AnyRecord</span>::<span class="ident">Ao</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> <span class="macro">try_set_handler</span><span class="macro">!</span>(<span class="ident">any</span>, <span class="ident">rec</span>, <span class="ident">AoHandler</span>),
+            <span class="ident">AnyRecord</span>::<span class="ident">Bi</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> <span class="macro">try_set_handler</span><span class="macro">!</span>(<span class="ident">any</span>, <span class="ident">rec</span>, <span class="ident">BiHandler</span>),
+            <span class="ident">AnyRecord</span>::<span class="ident">Bo</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> <span class="macro">try_set_handler</span><span class="macro">!</span>(<span class="ident">any</span>, <span class="ident">rec</span>, <span class="ident">BoHandler</span>),
+            <span class="ident">AnyRecord</span>::<span class="ident">Longin</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> <span class="macro">try_set_handler</span><span class="macro">!</span>(<span class="ident">any</span>, <span class="ident">rec</span>, <span class="ident">LonginHandler</span>),
+            <span class="ident">AnyRecord</span>::<span class="ident">Longout</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> <span class="macro">try_set_handler</span><span class="macro">!</span>(<span class="ident">any</span>, <span class="ident">rec</span>, <span class="ident">LongoutHandler</span>),
+            <span class="ident">AnyRecord</span>::<span class="ident">Stringin</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> <span class="macro">try_set_handler</span><span class="macro">!</span>(<span class="ident">any</span>, <span class="ident">rec</span>, <span class="ident">StringinHandler</span>),
+            <span class="ident">AnyRecord</span>::<span class="ident">Stringout</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rec</span>) <span class="op">=&gt;</span> <span class="macro">try_set_handler</span><span class="macro">!</span>(<span class="ident">any</span>, <span class="ident">rec</span>, <span class="ident">StringoutHandler</span>),
+        }.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> {
+            <span class="kw">match</span> <span class="ident">n</span> {
+                <span class="number">1</span> <span class="op">=&gt;</span> <span class="kw">crate</span>::<span class="ident">Error</span>::<span class="ident">Other</span>(<span class="macro">format</span><span class="macro">!</span>(
+                    <span class="string">&quot;record and handler type mismatch: {:?} != {:?}&quot;</span>,
+                    <span class="self">self</span>.<span class="ident">rtype</span>(), <span class="ident">any_type</span>,
+                ).<span class="ident">into</span>()),
+                <span class="number">2</span> <span class="op">=&gt;</span> <span class="kw">crate</span>::<span class="ident">Error</span>::<span class="ident">Other</span>(<span class="string">&quot;handler already set&quot;</span>.<span class="ident">into</span>()),
+                <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
+            }
+        })
     }
 }
 <span class="kw">impl</span> <span class="ident">Deref</span> <span class="kw">for</span> <span class="ident">AnyRecord</span> {
@@ -542,6 +592,44 @@
 <span class="macro">try_from_any</span><span class="macro">!</span>(<span class="ident">AnyWriteRecord</span>, <span class="ident">Bo</span>, <span class="ident">BoRecord</span>);
 <span class="macro">try_from_any</span><span class="macro">!</span>(<span class="ident">AnyWriteRecord</span>, <span class="ident">Longout</span>, <span class="ident">LongoutRecord</span>);
 <span class="macro">try_from_any</span><span class="macro">!</span>(<span class="ident">AnyWriteRecord</span>, <span class="ident">Stringout</span>, <span class="ident">StringoutRecord</span>);
+
+
+<span class="doccomment">/// Analog record wrapper</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AnalogRecord</span> {
+    <span class="ident">Ai</span>(<span class="ident">AiRecord</span>),
+    <span class="ident">Ao</span>(<span class="ident">AoRecord</span>),
+}
+<span class="kw">impl</span> <span class="ident">AnalogRecord</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rtype</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">RecordType</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">AnalogRecord</span>::<span class="ident">Ai</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="ident">RecordType</span>::<span class="ident">Ai</span>,
+            <span class="ident">AnalogRecord</span>::<span class="ident">Ao</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="ident">RecordType</span>::<span class="ident">Ao</span>,
+        }
+    }
+}
+<span class="kw">impl</span> <span class="ident">Deref</span> <span class="kw">for</span> <span class="ident">AnalogRecord</span> {
+    <span class="kw">type</span> <span class="ident">Target</span> <span class="op">=</span> <span class="ident">Record</span>;
+    <span class="kw">fn</span> <span class="ident">deref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">Target</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">AnalogRecord</span>::<span class="ident">Ai</span>(<span class="kw-2">ref</span> <span class="ident">r</span>) <span class="op">=&gt;</span> <span class="ident">r</span>,
+            <span class="ident">AnalogRecord</span>::<span class="ident">Ao</span>(<span class="kw-2">ref</span> <span class="ident">r</span>) <span class="op">=&gt;</span> <span class="ident">r</span>,
+        }
+    }
+}
+<span class="kw">impl</span> <span class="ident">DerefMut</span> <span class="kw">for</span> <span class="ident">AnalogRecord</span> {
+    <span class="kw">fn</span> <span class="ident">deref_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span>::<span class="ident">Target</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">AnalogRecord</span>::<span class="ident">Ai</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">r</span>) <span class="op">=&gt;</span> <span class="ident">r</span>,
+            <span class="ident">AnalogRecord</span>::<span class="ident">Ao</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">r</span>) <span class="op">=&gt;</span> <span class="ident">r</span>,
+        }
+    }
+}
+
+<span class="macro">into_any</span><span class="macro">!</span>(<span class="ident">AnalogRecord</span>, <span class="ident">Ai</span>, <span class="ident">AiRecord</span>);
+<span class="macro">into_any</span><span class="macro">!</span>(<span class="ident">AnalogRecord</span>, <span class="ident">Ao</span>, <span class="ident">AoRecord</span>);
+
+<span class="macro">try_from_any</span><span class="macro">!</span>(<span class="ident">AnalogRecord</span>, <span class="ident">Ai</span>, <span class="ident">AiRecord</span>);
+<span class="macro">try_from_any</span><span class="macro">!</span>(<span class="ident">AnalogRecord</span>, <span class="ident">Ao</span>, <span class="ident">AoRecord</span>);
 
 
 <span class="doccomment">/// Any boxed handler wrapper</span>

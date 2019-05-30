@@ -1,52 +1,176 @@
+use std::panic;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use log::{debug, error};
+use simple_logger;
+
+use lazy_static::lazy_static;
+
 use epics_sys::{IOSCANPVT};
 
 use crate::record::*;
-//use crate::context::Context;
+use crate::Context;
 
 use crate::async_proc;
 
+use crate::util::lossy;
 
-pub unsafe fn record_init<R, F>(raw: R::Raw, f: F)
-where R: Record + FromRaw + Into<AnyRecord>, F: Fn(&mut AnyRecord) -> AnyHandlerBox {
+lazy_static! {
+    static ref GATE: AtomicBool = AtomicBool::new(true);
+}
+
+fn overwrite_panic() {
+    let default_hook = panic::take_hook();
+
+    panic::set_hook(Box::new(move |panic_info| {
+        GATE.store(false, Ordering::SeqCst);
+        
+        let payload = panic_info.payload();
+        let payload = match payload.downcast_ref::<String>() {
+            Some(payload) => payload.clone(),
+            None => match payload.downcast_ref::<&str>() {
+                Some(payload) => String::from(*payload),
+                None => String::new(),
+            },
+        };
+        let location = match panic_info.location() {
+            Some(location) => format!(" in file '{}' at line {}", location.file(), location.line()),
+            None => String::new(),
+        };
+        error!("panic occured{}\n{}", location, payload);
+
+        default_hook(panic_info);
+    }));
+}
+
+pub fn check_gate() -> bool {
+    GATE.load(Ordering::SeqCst)
+}
+
+pub unsafe fn init<F>(f: F) where F: Fn(&mut Context) -> crate::Result<()> {
+    overwrite_panic();
+    simple_logger::init().unwrap();
+    async_proc::start_loop();
+    let mut ctx = Context::new();
+    match f(&mut ctx) {
+        Ok(()) => {
+            debug!("init");
+        },
+        Err(err) => {
+            error!("init: {}", err);
+            GATE.store(false, Ordering::SeqCst);
+        },
+    }
+}
+
+pub unsafe fn record_init<R, F>(raw: R::Raw, f: F) -> i32 where
+R: Record + FromRaw + Into<AnyRecord>, 
+F: Fn(&mut AnyRecord) -> crate::Result<AnyHandlerBox> {
     let mut rec = R::from_raw(raw).into();
     rec.init();
     //let mut ctx = Context::new();
-    let hdl = f(&mut rec);
-    assert_eq!(rec.rtype(), hdl.rtype());
-    rec.try_set_handler(hdl).expect("Record and handler type mismatch");
+    match f(&mut rec).and_then(|hdl| {
+        rec.try_set_handler(hdl)
+    }){
+        Ok(()) => {
+            debug!("record_init({})", lossy(rec.name()));
+            0
+        },
+        Err(e) => {
+            error!("record_init({}): {}", lossy(rec.name()), e);
+            1
+        },
+    }
 }
 
 pub unsafe fn record_set_scan<R>(
     _detach: bool, raw: R::Raw, ppvt: *mut IOSCANPVT
-) where R: ScanRecord + FromRaw {
+) -> i32 where R: ScanRecord + FromRaw {
     let mut rec = R::from_raw(raw);
     let scan = rec.create_scan();
     *ppvt = *scan.as_raw();
     rec.set_scan(scan.clone());
     //let mut ctx = Context::new();
-    rec.handler_set_scan(scan);
+    match rec.handler_set_scan(scan).unwrap_or_else(|| {
+        Err(crate::Error::Other("no handler".into()))
+    }) {
+        Ok(()) => {
+            debug!("record_set_scan({})", lossy(rec.name()));
+            0
+        },
+        Err(e) => {
+            error!("record_set_scan({}): {}", lossy(rec.name()), e);
+            1
+        },
+    }
 }
-pub unsafe fn record_read<R>(raw: R::Raw)
+pub unsafe fn record_read<R>(raw: R::Raw) -> i32
 where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
     let mut rec = R::from_raw(raw);
     if !rec.pact() {
         //let mut ctx = Context::new();
-        if !rec.handler_read() {
-            rec.set_pact(true);
-            async_proc::record_read(rec.into());
+        match rec.handler_read().unwrap_or_else(|| {
+            Err(crate::Error::Other("no handler".into()))
+        }) {
+            Ok(a) => {
+                debug!("record_write({})", lossy(rec.name()));
+                if !a {
+                    rec.set_pact(true);
+                    async_proc::record_read(rec.into());
+                }
+                0
+            },
+            Err(e) => {
+                error!("record_read({}): {}", lossy(rec.name()), e);
+                1
+            },
         }
+    } else {
+        0
     }
 }
 
-pub unsafe fn record_write<R>(raw: R::Raw)
+pub unsafe fn record_write<R>(raw: R::Raw) -> i32
 where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
     let mut rec = R::from_raw(raw);
     if !rec.pact() {
         //let mut ctx = Context::new();
-        if !rec.handler_write() {
-            rec.set_pact(true);
-            async_proc::record_write(rec.into());
+        match rec.handler_write().unwrap_or_else(|| {
+            Err(crate::Error::Other("no handler".into()))
+        }) {
+            Ok(a) => {
+                debug!("record_write({})", lossy(rec.name()));
+                if !a {
+                    rec.set_pact(true);
+                    async_proc::record_write(rec.into());
+                }
+                0
+            },
+            Err(e) => {
+                error!("record_write({}): {}", lossy(rec.name()), e);
+                1
+            },
         }
+    } else {
+        0
+    }
+}
+
+pub unsafe fn record_linconv<R>(raw: R::Raw, after: i32) -> i32
+where R: LinconvRecord + FromRaw + Into<AnalogRecord> {
+    let mut rec = R::from_raw(raw);
+    //let mut ctx = Context::new();
+    match rec.handler_linconv(after).unwrap_or_else(|| {
+        Err(crate::Error::Other("no handler".into()))
+    }) {
+        Ok(()) => {
+            debug!("record_linconv({})", lossy(rec.name()));
+            0
+        },
+        Err(e) => {
+            error!("record_linconv({}): {}", lossy(rec.name()), e);
+            1
+        },
     }
 }
 
@@ -57,8 +181,15 @@ macro_rules! _bind_record_init {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_init::<$crate::record::$rec, _>(rec, $init); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe {
+                    $crate::device_support::record_init::<
+                        $crate::record::$rec, _
+                    >(rec, $init) as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     };
 }
@@ -71,8 +202,15 @@ macro_rules! _bind_record_set_scan {
             rec: *mut $crate::epics_sys::$raw,
             ppvt: *mut $crate::epics_sys::IOSCANPVT,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_set_scan::<$rec>(detach != 0, rec, ppvt); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe {
+                    $crate::device_support::record_set_scan::<$rec>(
+                        detach != 0, rec, ppvt
+                    ) as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     }
 }
@@ -83,8 +221,14 @@ macro_rules! _bind_record_read {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_read::<$rec>(rec); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe { 
+                    $crate::device_support::record_read::<$rec>(rec)
+                    as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     };
 }
@@ -95,8 +239,14 @@ macro_rules! _bind_record_write {
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
-            unsafe { $crate::device_support::record_write::<$rec>(rec); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe {
+                    $crate::device_support::record_write::<$rec>(rec)
+                    as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     };
 }
@@ -108,10 +258,15 @@ macro_rules! _bind_record_linconv {
             rec: *mut $crate::epics_sys::$raw,
             after: $crate::libc::c_int,
         ) -> $crate::libc::c_long {
-            unsafe { <$crate::record::LinconvRecord>::handler_linconv(
-                &mut $rec::from_raw(rec), after as i32
-            ); }
-            0
+            if $crate::device_support::check_gate() {
+                unsafe {
+                    $crate::device_support::record_linconv::<$rec>(
+                        rec, after as i32
+                    ) as $crate::libc::c_long
+                }
+            } else {
+                1
+            }
         }
     };
 }
@@ -127,8 +282,7 @@ macro_rules! bind_device_support {
     ) => {
         #[no_mangle]
         extern fn rsbind_init() {
-            unsafe { $crate::async_proc::start_loop(); }
-            $init(unsafe { &mut $crate::context::Context::new() });
+            unsafe { $crate::device_support::init($init) };
         }
 
         // ai record
@@ -172,41 +326,4 @@ macro_rules! bind_device_support {
         $crate::_bind_record_set_scan!(stringoutRecord, StringoutRecord, rsbind_stringout_get_ioint_info);
         $crate::_bind_record_write!(stringoutRecord, StringoutRecord, rsbind_stringout_write_stringout);
     };
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{
-        bind_device_support,
-        register_command,
-        record::*,
-        context::*,
-    };
-
-    struct AiTest {}
-    impl AiHandler for AiTest {
-        fn linconv(&mut self, _rec: &mut AiRecord, _after: i32) {}
-    }
-    impl ReadHandler<AiRecord> for AiTest {
-        fn read(&mut self, _rec: &mut AiRecord) -> bool { false }
-        fn read_async(&mut self, _rec: &mut AiRecord) {}
-    }
-    impl ScanHandler<AiRecord> for AiTest {
-        fn set_scan(&mut self, _rec: &mut AiRecord, _scan: Scan) {}
-    }
-
-    fn init(context: &mut Context) {
-        println!("[devsup] init");
-        register_command!(context, fn test_command(a: i32, b: f64, c: &str) {
-            println!("[devsup] test_command({}, {}, {})", a, b, c);
-        });
-    }
-    fn record_init(_record: &mut AnyRecord) -> AnyHandlerBox {
-        ((Box::new(AiTest {}) as Box<dyn AiHandler + Send>)).into()
-    }
-
-    bind_device_support!(
-        init,
-        record_init,
-    );
 }

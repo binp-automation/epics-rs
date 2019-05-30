@@ -129,6 +129,10 @@
 <span id="129">129</span>
 <span id="130">130</span>
 <span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
 </pre><div class="example-wrap"><pre class="rust ">
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
@@ -182,18 +186,22 @@
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_record_handler</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">Record</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {
         <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Record</span> {
-            <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">set_handler</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">h</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>) {
-                <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">private_mut</span>().<span class="ident">handler</span>.<span class="ident">replace</span>(<span class="ident">h</span>).<span class="ident">is_none</span>());
+            <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">replace_handler</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">h</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;&gt;</span> {
+                <span class="self">self</span>.<span class="ident">private_mut</span>().<span class="ident">handler</span>.<span class="ident">replace</span>(<span class="ident">h</span>)
             }
-            <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">take_handler</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span> {
-                <span class="self">self</span>.<span class="ident">private_mut</span>().<span class="ident">handler</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>()
+            <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">take_handler</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;&gt;</span> {
+                <span class="self">self</span>.<span class="ident">private_mut</span>().<span class="ident">handler</span>.<span class="ident">take</span>()
             }
-            <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">with_handler</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">R</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">R</span>
+            <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">with_handler</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">R</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>
             <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Handler</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="ident">R</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">take_handler</span>();
-                <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">h</span>.<span class="ident">as_mut</span>(), <span class="self">self</span>);
-                <span class="self">self</span>.<span class="ident">set_handler</span>(<span class="ident">h</span>);
-                <span class="ident">ret</span>
+                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">take_handler</span>() {
+                    <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">h</span>) <span class="op">=&gt;</span> {
+                        <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">h</span>.<span class="ident">as_mut</span>(), <span class="self">self</span>);
+                        <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">replace_handler</span>(<span class="ident">h</span>).<span class="ident">is_none</span>());
+                        <span class="prelude-val">Some</span>(<span class="ident">ret</span>)
+                    },
+                    <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="prelude-val">None</span>
+                }
             }
         }
     }
@@ -229,7 +237,7 @@
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">derive_scan_record</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">Record</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {
         <span class="kw">impl</span> <span class="kw">crate</span>::<span class="ident">record</span>::<span class="ident">ScanRecord</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Record</span> {
-            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_set_scan</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">scan</span>: <span class="ident">Scan</span>) {
+            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_set_scan</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">scan</span>: <span class="ident">Scan</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> {
                 <span class="self">self</span>.<span class="ident">with_handler</span>(<span class="op">|</span><span class="ident">h</span>, <span class="ident">r</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">set_scan</span>(<span class="ident">r</span>, <span class="ident">scan</span>))
             }
         }
@@ -239,10 +247,10 @@
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">derive_read_record</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">Record</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {
         <span class="kw">impl</span> <span class="kw">crate</span>::<span class="ident">record</span>::<span class="ident">ReadRecord</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Record</span> {
-            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;&gt;</span> {
                 <span class="self">self</span>.<span class="ident">with_handler</span>(<span class="op">|</span><span class="ident">h</span>, <span class="ident">r</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">read</span>(<span class="ident">r</span>))
             }
-            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_read_async</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_read_async</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> {
                 <span class="self">self</span>.<span class="ident">with_handler</span>(<span class="op">|</span><span class="ident">h</span>, <span class="ident">r</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">read_async</span>(<span class="ident">r</span>))
             }
         }
@@ -252,10 +260,10 @@
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">derive_write_record</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">Record</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {
         <span class="kw">impl</span> <span class="kw">crate</span>::<span class="ident">record</span>::<span class="ident">WriteRecord</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Record</span> {
-            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;&gt;</span> {
                 <span class="self">self</span>.<span class="ident">with_handler</span>(<span class="op">|</span><span class="ident">h</span>, <span class="ident">r</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">write</span>(<span class="ident">r</span>))
             }
-            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_write_async</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+            <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_write_async</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> {
                 <span class="self">self</span>.<span class="ident">with_handler</span>(<span class="op">|</span><span class="ident">h</span>, <span class="ident">r</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">write_async</span>(<span class="ident">r</span>))
             }
         }

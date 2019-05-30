@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["record_init",""],["record_read",""],["record_set_scan",""],["record_write",""]]});
+initSidebarItems({"fn":[["check_gate",""],["init",""],["record_init",""],["record_linconv",""],["record_read",""],["record_set_scan",""],["record_write",""]]});

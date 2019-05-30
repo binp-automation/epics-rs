@@ -50,18 +50,22 @@ macro_rules! impl_record_private {
 macro_rules! impl_record_handler {
     ($Record:ident, $Handler:ident) => {
         impl $Record {
-            pub unsafe fn set_handler(&mut self, h: Box<dyn $Handler + Send>) {
-                assert!(self.private_mut().handler.replace(h).is_none());
+            pub unsafe fn replace_handler(&mut self, h: Box<dyn $Handler + Send>) -> Option<Box<dyn $Handler + Send>> {
+                self.private_mut().handler.replace(h)
             }
-            pub unsafe fn take_handler(&mut self) -> Box<dyn $Handler + Send> {
-                self.private_mut().handler.take().unwrap()
+            pub unsafe fn take_handler(&mut self) -> Option<Box<dyn $Handler + Send>> {
+                self.private_mut().handler.take()
             }
-            pub unsafe fn with_handler<F, R>(&mut self, f: F) -> R
+            pub unsafe fn with_handler<F, R>(&mut self, f: F) -> Option<R>
             where F: FnOnce(&mut dyn $Handler, &mut Self) -> R {
-                let mut h = self.take_handler();
-                let ret = f(h.as_mut(), self);
-                self.set_handler(h);
-                ret
+                match self.take_handler() {
+                    Some(mut h) => {
+                        let ret = f(h.as_mut(), self);
+                        assert!(self.replace_handler(h).is_none());
+                        Some(ret)
+                    },
+                    None => None
+                }
             }
         }
     }
@@ -97,7 +101,7 @@ macro_rules! derive_record {
 macro_rules! derive_scan_record {
     ($Record:ident) => {
         impl crate::record::ScanRecord for $Record {
-            unsafe fn handler_set_scan(&mut self, scan: Scan) {
+            unsafe fn handler_set_scan(&mut self, scan: Scan) -> Option<crate::Result<()>> {
                 self.with_handler(|h, r| h.set_scan(r, scan))
             }
         }
@@ -107,10 +111,10 @@ macro_rules! derive_scan_record {
 macro_rules! derive_read_record {
     ($Record:ident) => {
         impl crate::record::ReadRecord for $Record {
-            unsafe fn handler_read(&mut self) -> bool {
+            unsafe fn handler_read(&mut self) -> Option<crate::Result<bool>> {
                 self.with_handler(|h, r| h.read(r))
             }
-            unsafe fn handler_read_async(&mut self) {
+            unsafe fn handler_read_async(&mut self) -> Option<crate::Result<()>> {
                 self.with_handler(|h, r| h.read_async(r))
             }
         }
@@ -120,10 +124,10 @@ macro_rules! derive_read_record {
 macro_rules! derive_write_record {
     ($Record:ident) => {
         impl crate::record::WriteRecord for $Record {
-            unsafe fn handler_write(&mut self) -> bool {
+            unsafe fn handler_write(&mut self) -> Option<crate::Result<bool>> {
                 self.with_handler(|h, r| h.write(r))
             }
-            unsafe fn handler_write_async(&mut self) {
+            unsafe fn handler_write_async(&mut self) -> Option<crate::Result<()>> {
                 self.with_handler(|h, r| h.write_async(r))
             }
         }

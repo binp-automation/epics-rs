@@ -117,7 +117,6 @@
 <span id="117">117</span>
 <span id="118">118</span>
 <span id="119">119</span>
-<span id="120">120</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">epics_sys</span>::{<span class="ident">aiRecord</span>, <span class="ident">aoRecord</span>};
 
@@ -129,16 +128,15 @@
 
 <span class="doccomment">/// Record that can perform linconv (only AiRecord and AoRecord)</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">LinconvRecord</span>: <span class="ident">Record</span> {
-    <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">after</span>: <span class="ident">i32</span>);
+    <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">after</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span>;
 }
-
 
 <span class="comment">// Analog input</span>
 
 <span class="doccomment">/// Handler trait for analog input</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">AiHandler</span>: <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">AiRecord</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ReadHandler</span><span class="op">&lt;</span><span class="ident">AiRecord</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Linconv request</span>
-    <span class="kw">fn</span> <span class="ident">linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">record</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AiRecord</span>, <span class="ident">after</span>: <span class="ident">i32</span>);
+    <span class="kw">fn</span> <span class="ident">linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">record</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AiRecord</span>, <span class="ident">after</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span>;
 }
 
 <span class="doccomment">/// Analog input private data</span>
@@ -179,7 +177,7 @@
 <span class="macro">derive_scan_record</span><span class="macro">!</span>(<span class="ident">AiRecord</span>);
 <span class="macro">derive_read_record</span><span class="macro">!</span>(<span class="ident">AiRecord</span>);
 <span class="kw">impl</span> <span class="ident">LinconvRecord</span> <span class="kw">for</span> <span class="ident">AiRecord</span> {
-    <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">after</span>: <span class="ident">i32</span>) {
+    <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">after</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> {
         <span class="self">self</span>.<span class="ident">with_handler</span>(<span class="op">|</span><span class="ident">h</span>, <span class="ident">r</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">linconv</span>(<span class="ident">r</span>, <span class="ident">after</span>))
     }
 }
@@ -192,7 +190,7 @@
 <span class="doccomment">/// Handler trait for analog output</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">AoHandler</span>: <span class="ident">ScanHandler</span><span class="op">&lt;</span><span class="ident">AoRecord</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">WriteHandler</span><span class="op">&lt;</span><span class="ident">AoRecord</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Linconv request</span>
-    <span class="kw">fn</span> <span class="ident">linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">record</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AoRecord</span>, <span class="ident">after</span>: <span class="ident">i32</span>);
+    <span class="kw">fn</span> <span class="ident">linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">record</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AoRecord</span>, <span class="ident">after</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span>;
 }
 <span class="doccomment">/// Analog output private data</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AoPrivate</span> {
@@ -233,7 +231,7 @@
 <span class="macro">derive_scan_record</span><span class="macro">!</span>(<span class="ident">AoRecord</span>);
 <span class="macro">derive_write_record</span><span class="macro">!</span>(<span class="ident">AoRecord</span>);
 <span class="kw">impl</span> <span class="ident">LinconvRecord</span> <span class="kw">for</span> <span class="ident">AoRecord</span> {
-    <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">after</span>: <span class="ident">i32</span>) {
+    <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">handler_linconv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">after</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> {
         <span class="self">self</span>.<span class="ident">with_handler</span>(<span class="op">|</span><span class="ident">h</span>, <span class="ident">r</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">linconv</span>(<span class="ident">r</span>, <span class="ident">after</span>))
     }
 }

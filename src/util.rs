@@ -1,4 +1,7 @@
+use std::borrow::Cow;
+
 use libc::c_char;
+
 
 pub fn cstr_copy_from_slice(dst: &mut [c_char], src: &[u8]) {
     let maxlen = dst.len() - 1;
@@ -22,4 +25,8 @@ pub fn cstr_to_slice(src: &[c_char]) -> &[u8] {
         }
     }
     unsafe{ &*( &src[..len] as *const _ as *const [u8] ) }
+}
+
+pub fn lossy<'a>(r: &'a [u8]) -> Cow<'a, str> {
+    String::from_utf8_lossy(r)
 }

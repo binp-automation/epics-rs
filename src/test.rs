@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::{
+    self as epics,
     bind_device_support,
     register_command,
     record::*,
@@ -17,8 +18,9 @@ fn name<R: Deref<Target=Record>>(r: &R) -> &str {
 macro_rules! impl_scan_handler {
     ($Handler:ident, $Record:ident) => {
         impl ScanHandler<$Record> for $Handler {
-            fn set_scan(&mut self, record: &mut $Record, _scan: Scan) {
+            fn set_scan(&mut self, record: &mut $Record, _scan: Scan) -> epics::Result<()> {
                 println!("[devsup] {}.set_scan({})", stringify!($Record), name(record));
+                Ok(())
             }
         }
     };
@@ -27,12 +29,13 @@ macro_rules! impl_scan_handler {
 macro_rules! impl_read_handler {
     ($Handler:ident, $Record:ident) => {
         impl ReadHandler<$Record> for $Handler {
-            fn read(&mut self, record: &mut $Record) -> bool {
+            fn read(&mut self, record: &mut $Record) -> epics::Result<bool> {
                 println!("[devsup] {}.read({})", stringify!($Record), name(record));
-                false
+                Ok(false)
             }
-            fn read_async(&mut self, record: &mut $Record) {
+            fn read_async(&mut self, record: &mut $Record) -> epics::Result<()> {
                 println!("[devsup] {}.read_async({})", stringify!($Record), name(record));
+                Ok(())
             }
         }
     };
@@ -41,12 +44,13 @@ macro_rules! impl_read_handler {
 macro_rules! impl_write_handler {
     ($Handler:ident, $Record:ident) => {
         impl WriteHandler<$Record> for $Handler {
-            fn write(&mut self, record: &mut $Record) -> bool {
+            fn write(&mut self, record: &mut $Record) -> epics::Result<bool> {
                 println!("[devsup] {}.write({})", stringify!($Record), name(record));
-                false
+                Ok(false)
             }
-            fn write_async(&mut self, record: &mut $Record) {
+            fn write_async(&mut self, record: &mut $Record) -> epics::Result<()> {
                 println!("[devsup] {}.write_async({})", stringify!($Record), name(record));
+                Ok(())
             }
         }
     };
@@ -56,8 +60,9 @@ struct AiTest {}
 impl_scan_handler!(AiTest, AiRecord);
 impl_read_handler!(AiTest, AiRecord);
 impl AiHandler for AiTest {
-    fn linconv(&mut self, record: &mut AiRecord, _after: i32) {
+    fn linconv(&mut self, record: &mut AiRecord, _after: i32) -> epics::Result<()> {
         println!("[devsup] AiRecord.linconv({})", name(record));
+        Ok(())
     }
 }
 
@@ -65,8 +70,9 @@ struct AoTest {}
 impl_scan_handler!(AoTest, AoRecord);
 impl_write_handler!(AoTest, AoRecord);
 impl AoHandler for AoTest {
-    fn linconv(&mut self, record: &mut AoRecord, _after: i32) {
+    fn linconv(&mut self, record: &mut AoRecord, _after: i32) -> epics::Result<()> {
         println!("[devsup] AoRecord.linconv({})", name(record));
+        Ok(())
     }
 }
 
@@ -101,15 +107,16 @@ impl_write_handler!(StringoutTest, StringoutRecord);
 impl StringoutHandler for StringoutTest {}
 
 
-fn init(context: &mut Context) {
+fn init(context: &mut Context) -> epics::Result<()> {
     println!("[devsup] init");
     register_command!(context, fn test_command(a: i32, b: f64, c: &str) {
         println!("[devsup] test_command({}, {}, {})", a, b, c);
     });
+    Ok(())
 }
-fn record_init(record: &mut AnyRecord) -> AnyHandlerBox {
+fn record_init(record: &mut AnyRecord) -> epics::Result<AnyHandlerBox> {
     println!("[devsup] record_init {:?}: {}", record.rtype(), name(record));
-    match record {
+    Ok(match record {
         AnyRecord::Ai(_) => ((Box::new(AiTest {}) as Box<dyn AiHandler + Send>)).into(),
         AnyRecord::Ao(_) => ((Box::new(AoTest {}) as Box<dyn AoHandler + Send>)).into(),
         AnyRecord::Bi(_) => ((Box::new(BiTest {}) as Box<dyn BiHandler + Send>)).into(),
@@ -118,7 +125,7 @@ fn record_init(record: &mut AnyRecord) -> AnyHandlerBox {
         AnyRecord::Longout(_) => ((Box::new(LongoutTest {}) as Box<dyn LongoutHandler + Send>)).into(),
         AnyRecord::Stringin(_) => ((Box::new(StringinTest {}) as Box<dyn StringinHandler + Send>)).into(),
         AnyRecord::Stringout(_) => ((Box::new(StringoutTest {}) as Box<dyn StringoutHandler + Send>)).into(),
-    }
+    })
 }
 
 bind_device_support!(

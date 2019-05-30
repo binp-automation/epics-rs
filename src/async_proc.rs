@@ -3,9 +3,12 @@ use std::thread::{self, JoinHandle};
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::sync::Mutex;
 
+use log::{debug, error};
+
 use lazy_static::lazy_static;
 
 use crate::record::{AnyReadRecord, AnyWriteRecord};
+use crate::util::lossy;
 
 pub(crate) enum Message {
     Break,
@@ -31,11 +34,21 @@ fn handler_loop(channel: Receiver<Message>) {
         match channel.recv().unwrap() {
             Message::Break => break,
             Message::Read(mut rec) => unsafe {
-                rec.handler_read_async();
+                match rec.handler_read_async().unwrap_or_else(|| {
+                    Err(crate::Error::Other("no handler".into()))
+                }) {
+                    Ok(()) => debug!("record_read_async({})", lossy(rec.name())),
+                    Err(e) => error!("record_read_async({}): {}", lossy(rec.name()), e),
+                }
                 rec.process().unwrap();
             },
             Message::Write(mut rec) => unsafe {
-                rec.handler_write_async();
+                match rec.handler_write_async().unwrap_or_else(|| {
+                    Err(crate::Error::Other("no handler".into()))
+                }) {
+                    Ok(()) => debug!("record_write_async({})", lossy(rec.name())),
+                    Err(e) => error!("record_write_async({}): {}", lossy(rec.name()), e),
+                }
                 rec.process().unwrap();
             },
         }

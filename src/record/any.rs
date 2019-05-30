@@ -45,6 +45,18 @@ macro_rules! try_from_any {
         }
     };
 }
+macro_rules! try_set_handler {
+    ($any:ident, $rec:ident, $Handler:ident) => {
+        Box::<dyn $Handler + Send>::try_from($any)
+        .map_err(|_| 1).and_then(|hdl| {
+            match $rec.replace_handler(hdl) {
+                Some(_) => Err(2),
+                None => Ok(()),
+            }
+        })
+    };
+}
+
 
 /// Any record wrapper - could contain any record
 pub enum AnyRecord {
@@ -71,33 +83,27 @@ impl AnyRecord {
         }
     }
     pub unsafe fn try_set_handler(&mut self, any: AnyHandlerBox)
-    -> Result<(),(RecordType, RecordType)> {
+    -> Result<(), crate::Error> {
+        let any_type = any.rtype();
         match self {
-            AnyRecord::Ai(ref mut rec) =>
-                Box::<dyn AiHandler + Send>::try_from(any)
-                .and_then(|hdl| { rec.set_handler(hdl); Ok(()) }),
-            AnyRecord::Ao(ref mut rec) => 
-                Box::<dyn AoHandler + Send>::try_from(any)
-                .and_then(|hdl| { rec.set_handler(hdl); Ok(()) }),
-            AnyRecord::Bi(ref mut rec) =>
-                Box::<dyn BiHandler + Send>::try_from(any)
-                .and_then(|hdl| { rec.set_handler(hdl); Ok(()) }),
-            AnyRecord::Bo(ref mut rec) => 
-                Box::<dyn BoHandler + Send>::try_from(any)
-                .and_then(|hdl| { rec.set_handler(hdl); Ok(()) }),
-            AnyRecord::Longin(ref mut rec) =>
-                Box::<dyn LonginHandler + Send>::try_from(any)
-                .and_then(|hdl| { rec.set_handler(hdl); Ok(()) }),
-            AnyRecord::Longout(ref mut rec) => 
-                Box::<dyn LongoutHandler + Send>::try_from(any)
-                .and_then(|hdl| { rec.set_handler(hdl); Ok(()) }),
-            AnyRecord::Stringin(ref mut rec) =>
-                Box::<dyn StringinHandler + Send>::try_from(any)
-                .and_then(|hdl| { rec.set_handler(hdl); Ok(()) }),
-            AnyRecord::Stringout(ref mut rec) => 
-                Box::<dyn StringoutHandler + Send>::try_from(any)
-                .and_then(|hdl| { rec.set_handler(hdl); Ok(()) }),
-        }.map_err(|any| (self.rtype(), any.rtype()))
+            AnyRecord::Ai(ref mut rec) => try_set_handler!(any, rec, AiHandler),
+            AnyRecord::Ao(ref mut rec) => try_set_handler!(any, rec, AoHandler),
+            AnyRecord::Bi(ref mut rec) => try_set_handler!(any, rec, BiHandler),
+            AnyRecord::Bo(ref mut rec) => try_set_handler!(any, rec, BoHandler),
+            AnyRecord::Longin(ref mut rec) => try_set_handler!(any, rec, LonginHandler),
+            AnyRecord::Longout(ref mut rec) => try_set_handler!(any, rec, LongoutHandler),
+            AnyRecord::Stringin(ref mut rec) => try_set_handler!(any, rec, StringinHandler),
+            AnyRecord::Stringout(ref mut rec) => try_set_handler!(any, rec, StringoutHandler),
+        }.map_err(|n| {
+            match n {
+                1 => crate::Error::Other(format!(
+                    "record and handler type mismatch: {:?} != {:?}",
+                    self.rtype(), any_type,
+                ).into()),
+                2 => crate::Error::Other("handler already set".into()),
+                _ => unreachable!(),
+            }
+        })
     }
 }
 impl Deref for AnyRecord {
@@ -247,6 +253,44 @@ try_from_any!(AnyWriteRecord, Ao, AoRecord);
 try_from_any!(AnyWriteRecord, Bo, BoRecord);
 try_from_any!(AnyWriteRecord, Longout, LongoutRecord);
 try_from_any!(AnyWriteRecord, Stringout, StringoutRecord);
+
+
+/// Analog record wrapper
+pub enum AnalogRecord {
+    Ai(AiRecord),
+    Ao(AoRecord),
+}
+impl AnalogRecord {
+    pub fn rtype(&self) -> RecordType {
+        match self {
+            AnalogRecord::Ai(_) => RecordType::Ai,
+            AnalogRecord::Ao(_) => RecordType::Ao,
+        }
+    }
+}
+impl Deref for AnalogRecord {
+    type Target = Record;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            AnalogRecord::Ai(ref r) => r,
+            AnalogRecord::Ao(ref r) => r,
+        }
+    }
+}
+impl DerefMut for AnalogRecord {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            AnalogRecord::Ai(ref mut r) => r,
+            AnalogRecord::Ao(ref mut r) => r,
+        }
+    }
+}
+
+into_any!(AnalogRecord, Ai, AiRecord);
+into_any!(AnalogRecord, Ao, AoRecord);
+
+try_from_any!(AnalogRecord, Ai, AiRecord);
+try_from_any!(AnalogRecord, Ao, AoRecord);
 
 
 /// Any boxed handler wrapper

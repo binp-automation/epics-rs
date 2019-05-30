@@ -90,17 +90,17 @@ pub trait ScanRecord: Record {
     unsafe fn get_scan(&self) -> Option<Scan> {
         self.private().scan.clone()
     }
-    unsafe fn handler_set_scan(&mut self, scan: Scan);
+    unsafe fn handler_set_scan(&mut self, scan: Scan) -> Option<crate::Result<()>>;
 }
 
 /// Readable record behavior
 pub trait ReadRecord: Record {
-    unsafe fn handler_read(&mut self) -> bool;
-    unsafe fn handler_read_async(&mut self);
+    unsafe fn handler_read(&mut self) -> Option<crate::Result<bool>>;
+    unsafe fn handler_read_async(&mut self) -> Option<crate::Result<()>>;
 }
 
 /// Writable record behavior
 pub trait WriteRecord: Record {
-    unsafe fn handler_write(&mut self) -> bool;
-    unsafe fn handler_write_async(&mut self);
+    unsafe fn handler_write(&mut self) -> Option<crate::Result<bool>>;
+    unsafe fn handler_write_async(&mut self) -> Option<crate::Result<()>>;
 }

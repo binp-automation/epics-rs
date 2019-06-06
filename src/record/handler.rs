@@ -1,17 +1,23 @@
 use crate::record::{
-    Scan,
+    Scan, Record,
     ScanRecord, ReadRecord, WriteRecord,
+    AnyHandlerBox,
 };
 
+/// Base of all handlers
+pub trait Handler<R: Record> {
+    /// Converts self into AnyHandlerBox
+    fn into_any_box(self) -> AnyHandlerBox;
+}
 
 /// Handler for scannable records
-pub trait ScanHandler<R: ScanRecord> {
+pub trait ScanHandler<R: ScanRecord>: Handler<R> {
     /// Set scan handle for `I/O Intr` records.
     fn set_scan(&mut self, rec: &mut R, scan: Scan) -> crate::Result<()>;
 }
 
 /// Handler for records that could be read
-pub trait ReadHandler<R: ReadRecord> {
+pub trait ReadHandler<R: ReadRecord>: Handler<R> {
     /// Synchronous read request. *Should not block.*
     ///
     /// Returns:
@@ -26,7 +32,7 @@ pub trait ReadHandler<R: ReadRecord> {
 }
 
 /// Handler for records that could be written
-pub trait WriteHandler<R: WriteRecord> {
+pub trait WriteHandler<R: WriteRecord>: Handler<R> {
     /// Synchronous write request. *Should not block.*
     ///
     /// Returns:

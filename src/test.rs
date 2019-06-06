@@ -15,6 +15,16 @@ fn name<R: Deref<Target=Record>>(r: &R) -> &str {
     from_utf8(r.name()).unwrap()
 }
 
+macro_rules! impl_handler {
+    ($Handler:ident, $opt:ident, $Record:ident) => {
+        impl Handler<$Record> for $Handler {
+            fn into_any_box(self) -> AnyHandlerBox {
+                AnyHandlerBox::$opt(Box::new(self))
+            }
+        }
+    };
+}
+
 macro_rules! impl_scan_handler {
     ($Handler:ident, $Record:ident) => {
         impl ScanHandler<$Record> for $Handler {
@@ -57,6 +67,7 @@ macro_rules! impl_write_handler {
 }
 
 struct AiTest {}
+impl_handler!(AiTest, Ai, AiRecord);
 impl_scan_handler!(AiTest, AiRecord);
 impl_read_handler!(AiTest, AiRecord);
 impl AiHandler for AiTest {
@@ -67,6 +78,7 @@ impl AiHandler for AiTest {
 }
 
 struct AoTest {}
+impl_handler!(AoTest, Ao, AoRecord);
 impl_scan_handler!(AoTest, AoRecord);
 impl_write_handler!(AoTest, AoRecord);
 impl AoHandler for AoTest {
@@ -77,31 +89,37 @@ impl AoHandler for AoTest {
 }
 
 struct BiTest {}
+impl_handler!(BiTest, Bi, BiRecord);
 impl_scan_handler!(BiTest, BiRecord);
 impl_read_handler!(BiTest, BiRecord);
 impl BiHandler for BiTest {}
 
 struct BoTest {}
+impl_handler!(BoTest, Bo, BoRecord);
 impl_scan_handler!(BoTest, BoRecord);
 impl_write_handler!(BoTest, BoRecord);
 impl BoHandler for BoTest {}
 
 struct LonginTest {}
+impl_handler!(LonginTest, Longin, LonginRecord);
 impl_scan_handler!(LonginTest, LonginRecord);
 impl_read_handler!(LonginTest, LonginRecord);
 impl LonginHandler for LonginTest {}
 
 struct LongoutTest {}
+impl_handler!(LongoutTest, Longout, LongoutRecord);
 impl_scan_handler!(LongoutTest, LongoutRecord);
 impl_write_handler!(LongoutTest, LongoutRecord);
 impl LongoutHandler for LongoutTest {}
 
 struct StringinTest {}
+impl_handler!(StringinTest, Stringin, StringinRecord);
 impl_scan_handler!(StringinTest, StringinRecord);
 impl_read_handler!(StringinTest, StringinRecord);
 impl StringinHandler for StringinTest {}
 
 struct StringoutTest {}
+impl_handler!(StringoutTest, Stringout, StringoutRecord);
 impl_scan_handler!(StringoutTest, StringoutRecord);
 impl_write_handler!(StringoutTest, StringoutRecord);
 impl StringoutHandler for StringoutTest {}
@@ -118,14 +136,14 @@ fn init(context: &mut Context) -> epics::Result<()> {
 fn record_init(record: &mut AnyRecord) -> epics::Result<AnyHandlerBox> {
     println!("[DEVSUP] record_init {:?}: {}", record.rtype(), name(record));
     Ok(match record {
-        AnyRecord::Ai(_) => ((Box::new(AiTest {}) as Box<dyn AiHandler + Send>)).into(),
-        AnyRecord::Ao(_) => ((Box::new(AoTest {}) as Box<dyn AoHandler + Send>)).into(),
-        AnyRecord::Bi(_) => ((Box::new(BiTest {}) as Box<dyn BiHandler + Send>)).into(),
-        AnyRecord::Bo(_) => ((Box::new(BoTest {}) as Box<dyn BoHandler + Send>)).into(),
-        AnyRecord::Longin(_) => ((Box::new(LonginTest {}) as Box<dyn LonginHandler + Send>)).into(),
-        AnyRecord::Longout(_) => ((Box::new(LongoutTest {}) as Box<dyn LongoutHandler + Send>)).into(),
-        AnyRecord::Stringin(_) => ((Box::new(StringinTest {}) as Box<dyn StringinHandler + Send>)).into(),
-        AnyRecord::Stringout(_) => ((Box::new(StringoutTest {}) as Box<dyn StringoutHandler + Send>)).into(),
+        AnyRecord::Ai(_) => (AiTest {}).into_any_box(),
+        AnyRecord::Ao(_) => (AoTest {}).into_any_box(),
+        AnyRecord::Bi(_) => (BiTest {}).into_any_box(),
+        AnyRecord::Bo(_) => (BoTest {}).into_any_box(),
+        AnyRecord::Longin(_) => (LonginTest {}).into_any_box(),
+        AnyRecord::Longout(_) => (LongoutTest {}).into_any_box(),
+        AnyRecord::Stringin(_) => (StringinTest {}).into_any_box(),
+        AnyRecord::Stringout(_) => (StringoutTest {}).into_any_box(),
     })
 }
 

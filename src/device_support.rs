@@ -1,5 +1,5 @@
 use std::panic;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering, fence};
 
 use log::{debug, error};
 use simple_logger;
@@ -63,7 +63,7 @@ pub unsafe fn init<F>(f: F) where F: Fn(&mut Context) -> crate::Result<()> {
     }
 }
 
-pub unsafe fn record_init<R, F>(raw: R::Raw, f: F) -> i32 where
+pub unsafe fn record_init<R, F>(raw: R::Raw, f: F, ret: i32) -> i32 where
 R: Record + FromRaw + Into<AnyRecord>, 
 F: Fn(&mut AnyRecord) -> crate::Result<AnyHandlerBox> {
     let mut rec = R::from_raw(raw).into();
@@ -74,7 +74,7 @@ F: Fn(&mut AnyRecord) -> crate::Result<AnyHandlerBox> {
     }){
         Ok(()) => {
             debug!("record_init({})", lossy(rec.name()));
-            0
+            ret
         },
         Err(e) => {
             error!("record_init({}): {}", lossy(rec.name()), e);
@@ -104,7 +104,7 @@ pub unsafe fn record_set_scan<R>(
         },
     }
 }
-pub unsafe fn record_read<R>(raw: R::Raw) -> i32
+pub unsafe fn record_read<R>(raw: R::Raw, ret: i32) -> i32
 where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
     let mut rec = R::from_raw(raw);
     if !rec.pact() {
@@ -113,12 +113,13 @@ where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
             Err(crate::Error::Other("no handler".into()))
         }) {
             Ok(a) => {
-                debug!("record_write({})", lossy(rec.name()));
+                debug!("record_read({})", lossy(rec.name()));
                 if !a {
                     rec.set_pact(true);
+                    fence(Ordering::SeqCst);
                     async_proc::record_read(rec.into());
                 }
-                0
+                ret
             },
             Err(e) => {
                 error!("record_read({}): {}", lossy(rec.name()), e);
@@ -126,7 +127,8 @@ where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
             },
         }
     } else {
-        0
+        fence(Ordering::SeqCst);
+        ret
     }
 }
 
@@ -142,6 +144,7 @@ where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
                 debug!("record_write({})", lossy(rec.name()));
                 if !a {
                     rec.set_pact(true);
+                    fence(Ordering::SeqCst);
                     async_proc::record_write(rec.into());
                 }
                 0
@@ -152,6 +155,7 @@ where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
             },
         }
     } else {
+        fence(Ordering::SeqCst);
         0
     }
 }
@@ -177,6 +181,9 @@ where R: LinconvRecord + FromRaw + Into<AnalogRecord> {
 #[macro_export]
 macro_rules! _bind_record_init {
     ($init:path, $raw:ident, $rec:ident, $xfn:ident) => {
+        $crate::_bind_record_init!($init, $raw, $rec, $xfn, 0);
+    };
+    ($init:path, $raw:ident, $rec:ident, $xfn:ident, $ret:expr) => {
         #[no_mangle]
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
@@ -185,7 +192,7 @@ macro_rules! _bind_record_init {
                 unsafe {
                     $crate::device_support::record_init::<
                         $crate::record::$rec, _
-                    >(rec, $init) as $crate::libc::c_long
+                    >(rec, $init, $ret) as $crate::libc::c_long
                 }
             } else {
                 1
@@ -217,13 +224,16 @@ macro_rules! _bind_record_set_scan {
 #[macro_export]
 macro_rules! _bind_record_read {
     ($raw:ident, $rec:ident, $xfn:ident) => {
+        $crate::_bind_record_read!($raw, $rec, $xfn, 0);
+    };
+    ($raw:ident, $rec:ident, $xfn:ident, $ret:expr) => {
         #[no_mangle]
         extern fn $xfn(
             rec: *mut $crate::epics_sys::$raw,
         ) -> $crate::libc::c_long {
             if $crate::device_support::check_gate() {
                 unsafe { 
-                    $crate::device_support::record_read::<$rec>(rec)
+                    $crate::device_support::record_read::<$rec>(rec, $ret)
                     as $crate::libc::c_long
                 }
             } else {
@@ -288,11 +298,11 @@ macro_rules! bind_device_support {
         // ai record
         $crate::_bind_record_init!($record_init, aiRecord, AiRecord, rsbind_ai_init_record);
         $crate::_bind_record_set_scan!(aiRecord, AiRecord, rsbind_ai_get_ioint_info);
-        $crate::_bind_record_read!(aiRecord, AiRecord, rsbind_ai_read_ai);
+        $crate::_bind_record_read!(aiRecord, AiRecord, rsbind_ai_read_ai, 2);
         $crate::_bind_record_linconv!(aiRecord, AiRecord, rsbind_ai_special_linconv);
 
         // ao record
-        $crate::_bind_record_init!($record_init, aoRecord, AoRecord, rsbind_ao_init_record);
+        $crate::_bind_record_init!($record_init, aoRecord, AoRecord, rsbind_ao_init_record, 2);
         $crate::_bind_record_set_scan!(aoRecord, AoRecord, rsbind_ao_get_ioint_info);
         $crate::_bind_record_write!(aoRecord, AoRecord, rsbind_ao_write_ao);
         $crate::_bind_record_linconv!(aoRecord, AoRecord, rsbind_ao_special_linconv);

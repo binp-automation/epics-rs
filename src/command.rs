@@ -170,7 +170,7 @@ macro_rules! register_command {
         $context:expr, 
         fn $fn_name:ident ( $( $arg_name:ident : $arg_type:ty ),* ) -> $fn_ret:ty
         $fn_body:block
-    ) => {
+    ) => {{
         let _: &mut $crate::context::Context = $context;
         extern "C" fn wrapper(args: *const $crate::epics_sys::iocshArgBuf) {
             if !$crate::device_support::check_gate() {
@@ -196,5 +196,5 @@ macro_rules! register_command {
             .arg(stringify!($arg_name), <$arg_type as $crate::command::AsType>::dtype())
         )*
         .register(wrapper);
-    };
+    }};
 }

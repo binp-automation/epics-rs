@@ -31,6 +31,7 @@ macro_rules! into_any {
         }
     };
 }
+
 macro_rules! try_from_any {
     ($any:ident, $opt:ident, $type:ty) => {
         impl TryFrom<$any> for $type {
@@ -45,6 +46,7 @@ macro_rules! try_from_any {
         }
     };
 }
+
 macro_rules! try_set_handler {
     ($any:ident, $rec:ident, $Handler:ident) => {
         Box::<dyn $Handler + Send>::try_from($any)
@@ -56,7 +58,6 @@ macro_rules! try_set_handler {
         })
     };
 }
-
 
 /// Any record wrapper - could contain any record
 pub enum AnyRecord {

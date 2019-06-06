@@ -70,23 +70,13 @@ struct AiTest {}
 impl_handler!(AiTest, Ai, AiRecord);
 impl_scan_handler!(AiTest, AiRecord);
 impl_read_handler!(AiTest, AiRecord);
-impl AiHandler for AiTest {
-    fn linconv(&mut self, record: &mut AiRecord, _after: i32) -> epics::Result<()> {
-        println!("[DEVSUP] AiRecord.linconv({})", name(record));
-        Ok(())
-    }
-}
+impl AiHandler for AiTest {}
 
 struct AoTest {}
 impl_handler!(AoTest, Ao, AoRecord);
 impl_scan_handler!(AoTest, AoRecord);
 impl_write_handler!(AoTest, AoRecord);
-impl AoHandler for AoTest {
-    fn linconv(&mut self, record: &mut AoRecord, _after: i32) -> epics::Result<()> {
-        println!("[DEVSUP] AoRecord.linconv({})", name(record));
-        Ok(())
-    }
-}
+impl AoHandler for AoTest {}
 
 struct BiTest {}
 impl_handler!(BiTest, Bi, BiRecord);

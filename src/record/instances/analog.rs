@@ -1,23 +1,15 @@
 use epics_sys::{aiRecord, aoRecord};
 
 use crate::record::{
-    Scan, RecordType, FromRaw, Private, CommonPrivate, Record,
+    Scan, RecordType, FromRaw, Private, CommonPrivate,
     ScanHandler, ReadHandler, WriteHandler,
 };
 
 
-/// Record that can perform linconv (only AiRecord and AoRecord)
-pub trait LinconvRecord: Record {
-    unsafe fn handler_linconv(&mut self, after: i32) -> Option<crate::Result<()>>;
-}
-
 // Analog input
 
 /// Handler trait for analog input
-pub trait AiHandler: ScanHandler<AiRecord> + ReadHandler<AiRecord> {
-    /// Linconv request
-    fn linconv(&mut self, record: &mut AiRecord, after: i32) -> crate::Result<()>;
-}
+pub trait AiHandler: ScanHandler<AiRecord> + ReadHandler<AiRecord> {}
 
 /// Analog input private data
 pub struct AiPrivate {
@@ -56,11 +48,6 @@ impl FromRaw for AiRecord {
 derive_record!(AiRecord, AiPrivate);
 derive_scan_record!(AiRecord);
 derive_read_record!(AiRecord);
-impl LinconvRecord for AiRecord {
-    unsafe fn handler_linconv(&mut self, after: i32) -> Option<crate::Result<()>> {
-        self.with_handler(|h, r| h.linconv(r, after))
-    }
-}
 derive_deref_record!(AiRecord);
 unsafe impl Send for AiRecord {}
 
@@ -68,10 +55,8 @@ unsafe impl Send for AiRecord {}
 // Analog output
 
 /// Handler trait for analog output
-pub trait AoHandler: ScanHandler<AoRecord> + WriteHandler<AoRecord> {
-    /// Linconv request
-    fn linconv(&mut self, record: &mut AoRecord, after: i32) -> crate::Result<()>;
-}
+pub trait AoHandler: ScanHandler<AoRecord> + WriteHandler<AoRecord> {}
+
 /// Analog output private data
 pub struct AoPrivate {
     base: CommonPrivate,
@@ -110,10 +95,5 @@ impl FromRaw for AoRecord {
 derive_record!(AoRecord, AoPrivate);
 derive_scan_record!(AoRecord);
 derive_write_record!(AoRecord);
-impl LinconvRecord for AoRecord {
-    unsafe fn handler_linconv(&mut self, after: i32) -> Option<crate::Result<()>> {
-        self.with_handler(|h, r| h.linconv(r, after))
-    }
-}
 derive_deref_record!(AoRecord);
 unsafe impl Send for AoRecord {}

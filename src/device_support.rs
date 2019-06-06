@@ -84,9 +84,15 @@ F: Fn(&mut AnyRecord) -> crate::Result<AnyHandlerBox> {
 }
 
 pub unsafe fn record_set_scan<R>(
-    _detach: bool, raw: R::Raw, ppvt: *mut IOSCANPVT
+    detach: bool, raw: R::Raw, ppvt: *mut IOSCANPVT
 ) -> i32 where R: ScanRecord + FromRaw {
     let mut rec = R::from_raw(raw);
+    if detach {
+        panic!(
+            "record '{}' was deleted from I/O event list: {}",
+            lossy(rec.name()), "this action is not supported yet",
+        );
+    }
     let scan = rec.create_scan();
     *ppvt = *scan.as_raw();
     rec.set_scan(scan.clone());
@@ -160,22 +166,13 @@ where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
     }
 }
 
-pub unsafe fn record_linconv<R>(raw: R::Raw, after: i32) -> i32
-where R: LinconvRecord + FromRaw + Into<AnalogRecord> {
-    let mut rec = R::from_raw(raw);
-    //let mut ctx = Context::new();
-    match rec.handler_linconv(after).unwrap_or_else(|| {
-        Err(crate::Error::Other("no handler".into()))
-    }) {
-        Ok(()) => {
-            debug!("record_linconv({})", lossy(rec.name()));
-            0
-        },
-        Err(e) => {
-            error!("record_linconv({}): {}", lossy(rec.name()), e);
-            1
-        },
-    }
+pub unsafe fn record_linconv<R>(raw: R::Raw, _after: i32) -> i32
+where R: Record + FromRaw {
+    let rec = R::from_raw(raw);
+    panic!(
+        "record '{}' unexpectedly requested linconv: {}",
+        lossy(rec.name()), "this action is not supported yet",
+    );
 }
 
 #[macro_export]

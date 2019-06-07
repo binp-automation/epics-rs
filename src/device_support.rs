@@ -293,7 +293,6 @@ macro_rules! _record_init_fn {
     };
     ( $( $H:path, )* ) => {
         fn _record_init_fn(record: &mut AnyRecord) -> $crate::Result<AnyHandlerBox> {
-            $crate::log::debug!("record_init({})", record.name());
             let text = String::from(record.link());
             let args: Vec<&str> = text.split(',').map(|s| s.trim()).collect();
             if args.len() >= 1 && args[0].len() > 0 {

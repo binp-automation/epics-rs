@@ -13,7 +13,8 @@ macro_rules! impl_handler {
     ($Handler:ident, $opt:ident, $Record:ident) => {
         impl Handler<$Record> for $Handler {}
         impl InitHandler<$Record> for $Handler {
-            fn init(_record: &mut $Record, _args: &[&str]) -> epics::Result<Self> {
+            fn init(record: &mut $Record, args: &[&str]) -> epics::Result<Self> {
+                info!("record_init({}, {:?})", record.name(), args);
                 Ok(Self {})
             }
         }

@@ -185,9 +185,8 @@ macro_rules! _bind_record_init {
         ) -> $crate::libc::c_long {
             if $crate::device_support::check_gate() {
                 unsafe {
-                    $crate::device_support::record_init::<
-                        $crate::record::$rec, _
-                    >(rec, $init, $ret) as $crate::libc::c_long
+                    $crate::device_support::record_init::<$crate::record::$rec, _>
+                    (rec, $init, $ret) as $crate::libc::c_long
                 }
             } else {
                 1
@@ -206,9 +205,8 @@ macro_rules! _bind_record_set_scan {
         ) -> $crate::libc::c_long {
             if $crate::device_support::check_gate() {
                 unsafe {
-                    $crate::device_support::record_set_scan::<$rec>(
-                        detach != 0, rec, ppvt
-                    ) as $crate::libc::c_long
+                    $crate::device_support::record_set_scan::<$crate::record::$rec>
+                    (detach != 0, rec, ppvt) as $crate::libc::c_long
                 }
             } else {
                 1
@@ -228,8 +226,8 @@ macro_rules! _bind_record_read {
         ) -> $crate::libc::c_long {
             if $crate::device_support::check_gate() {
                 unsafe { 
-                    $crate::device_support::record_read::<$rec>(rec, $ret)
-                    as $crate::libc::c_long
+                    $crate::device_support::record_read::<$crate::record::$rec>
+                    (rec, $ret) as $crate::libc::c_long
                 }
             } else {
                 1
@@ -246,8 +244,8 @@ macro_rules! _bind_record_write {
         ) -> $crate::libc::c_long {
             if $crate::device_support::check_gate() {
                 unsafe {
-                    $crate::device_support::record_write::<$rec>(rec)
-                    as $crate::libc::c_long
+                    $crate::device_support::record_write::<$crate::record::$rec>
+                    (rec) as $crate::libc::c_long
                 }
             } else {
                 1
@@ -265,9 +263,8 @@ macro_rules! _bind_record_linconv {
         ) -> $crate::libc::c_long {
             if $crate::device_support::check_gate() {
                 unsafe {
-                    $crate::device_support::record_linconv::<$rec>(
-                        rec, after as i32
-                    ) as $crate::libc::c_long
+                    $crate::device_support::record_linconv::<$crate::record::$rec>
+                    (rec, after as i32) as $crate::libc::c_long
                 }
             } else {
                 1
@@ -292,7 +289,10 @@ macro_rules! _record_init_fn {
         $crate::_record_init_fn!( $( $x, )* );
     };
     ( $( $H:path, )* ) => {
-        fn _record_init_fn(record: &mut AnyRecord) -> $crate::Result<AnyHandlerBox> {
+        fn _record_init_fn(record: &mut $crate::record::AnyRecord)
+        -> $crate::Result<$crate::record::AnyHandlerBox> {
+            #[allow(unused_import)]
+            use $crate::record::*;
             let text = String::from(record.link());
             let args: Vec<&str> = text.split(',').map(|s| s.trim()).collect();
             if args.len() >= 1 && args[0].len() > 0 {

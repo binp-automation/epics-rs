@@ -1,25 +1,20 @@
-use std::{
-    ops::Deref,
-    str::from_utf8,
-};
+use simple_logger;
 
 use crate::{
     self as epics,
+    log::{info},
     bind_device_support,
     register_command,
     record::*,
     context::*,
 };
 
-fn name<R: Deref<Target=Record>>(r: &R) -> &str {
-    from_utf8(r.name()).unwrap()
-}
-
 macro_rules! impl_handler {
     ($Handler:ident, $opt:ident, $Record:ident) => {
-        impl Handler<$Record> for $Handler {
-            fn into_any_box(self) -> AnyHandlerBox {
-                AnyHandlerBox::$opt(Box::new(self))
+        impl Handler<$Record> for $Handler {}
+        impl InitHandler<$Record> for $Handler {
+            fn init(_record: &mut $Record, _args: &[&str]) -> epics::Result<Self> {
+                Ok(Self {})
             }
         }
     };
@@ -29,7 +24,7 @@ macro_rules! impl_scan_handler {
     ($Handler:ident, $Record:ident) => {
         impl ScanHandler<$Record> for $Handler {
             fn set_scan(&mut self, record: &mut $Record, _scan: Scan) -> epics::Result<()> {
-                println!("[DEVSUP] {}.set_scan({})", stringify!($Record), name(record));
+                info!("{}.set_scan({})", stringify!($Record), record.name());
                 Ok(())
             }
         }
@@ -40,11 +35,11 @@ macro_rules! impl_read_handler {
     ($Handler:ident, $Record:ident) => {
         impl ReadHandler<$Record> for $Handler {
             fn read(&mut self, record: &mut $Record) -> epics::Result<bool> {
-                println!("[DEVSUP] {}.read({})", stringify!($Record), name(record));
+                info!("{}.read({})", stringify!($Record), record.name());
                 Ok(false)
             }
             fn read_async(&mut self, record: &mut $Record) -> epics::Result<()> {
-                println!("[DEVSUP] {}.read_async({})", stringify!($Record), name(record));
+                info!("{}.read_async({})", stringify!($Record), record.name());
                 Ok(())
             }
         }
@@ -55,11 +50,11 @@ macro_rules! impl_write_handler {
     ($Handler:ident, $Record:ident) => {
         impl WriteHandler<$Record> for $Handler {
             fn write(&mut self, record: &mut $Record) -> epics::Result<bool> {
-                println!("[DEVSUP] {}.write({})", stringify!($Record), name(record));
+                info!("{}.write({})", stringify!($Record), record.name());
                 Ok(false)
             }
             fn write_async(&mut self, record: &mut $Record) -> epics::Result<()> {
-                println!("[DEVSUP] {}.write_async({})", stringify!($Record), name(record));
+                info!("{}.write_async({})", stringify!($Record), record.name());
                 Ok(())
             }
         }
@@ -116,28 +111,25 @@ impl StringoutHandler for StringoutTest {}
 
 
 fn init(context: &mut Context) -> epics::Result<()> {
-    println!("[DEVSUP] init");
+    simple_logger::init().unwrap();
+    info!("init");
     register_command!(context, fn test_command(a: i32, b: f64, c: &str) -> epics::Result<()> {
-        println!("[DEVSUP] test_command({}, {}, {})", a, b, c);
+        info!("test_command({}, {}, {})", a, b, c);
         Ok(())
     });
     Ok(())
 }
-fn record_init(record: &mut AnyRecord) -> epics::Result<AnyHandlerBox> {
-    println!("[DEVSUP] record_init {:?}: {}", record.rtype(), name(record));
-    Ok(match record {
-        AnyRecord::Ai(_) => (AiTest {}).into_any_box(),
-        AnyRecord::Ao(_) => (AoTest {}).into_any_box(),
-        AnyRecord::Bi(_) => (BiTest {}).into_any_box(),
-        AnyRecord::Bo(_) => (BoTest {}).into_any_box(),
-        AnyRecord::Longin(_) => (LonginTest {}).into_any_box(),
-        AnyRecord::Longout(_) => (LongoutTest {}).into_any_box(),
-        AnyRecord::Stringin(_) => (StringinTest {}).into_any_box(),
-        AnyRecord::Stringout(_) => (StringoutTest {}).into_any_box(),
-    })
-}
 
 bind_device_support!(
     init,
-    record_init,
+    {
+        AiTest,
+        AoTest,
+        BiTest,
+        BoTest,
+        LonginTest,
+        LongoutTest,
+        StringinTest,
+        StringoutTest,
+    },
 );

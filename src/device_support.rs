@@ -1,8 +1,8 @@
 use std::panic;
+use std::convert::TryFrom;
 use std::sync::atomic::{AtomicBool, Ordering, fence};
 
 use log::{debug, error};
-use simple_logger;
 
 use lazy_static::lazy_static;
 
@@ -13,7 +13,6 @@ use crate::Context;
 
 use crate::async_proc;
 
-use crate::util::lossy;
 
 lazy_static! {
     static ref GATE: AtomicBool = AtomicBool::new(true);
@@ -49,7 +48,6 @@ pub fn check_gate() -> bool {
 
 pub unsafe fn init<F>(f: F) where F: Fn(&mut Context) -> crate::Result<()> {
     overwrite_panic();
-    simple_logger::init().unwrap();
     async_proc::start_loop();
     let mut ctx = Context::new();
     match f(&mut ctx) {
@@ -73,12 +71,12 @@ F: Fn(&mut AnyRecord) -> crate::Result<AnyHandlerBox> {
         rec.try_set_handler(hdl)
     }){
         Ok(()) => {
-            debug!("record_init({})", lossy(rec.name()));
+            debug!("record_init({})", rec.name());
             ret
         },
         Err(e) => {
-            error!("record_init({}): {}", lossy(rec.name()), e);
-            1
+            panic!("record_init({}): {}", rec.name(), e);
+            //1
         },
     }
 }
@@ -90,7 +88,7 @@ pub unsafe fn record_set_scan<R>(
     if detach {
         panic!(
             "record '{}' was deleted from I/O event list: {}",
-            lossy(rec.name()), "this action is not supported yet",
+            rec.name(), "this action is not supported yet",
         );
     }
     let scan = rec.create_scan();
@@ -101,11 +99,11 @@ pub unsafe fn record_set_scan<R>(
         Err(crate::Error::Other("no handler".into()))
     }) {
         Ok(()) => {
-            debug!("record_set_scan({})", lossy(rec.name()));
+            debug!("record_set_scan({})", rec.name());
             0
         },
         Err(e) => {
-            error!("record_set_scan({}): {}", lossy(rec.name()), e);
+            error!("record_set_scan({}): {}", rec.name(), e);
             1
         },
     }
@@ -119,7 +117,7 @@ where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
             Err(crate::Error::Other("no handler".into()))
         }) {
             Ok(a) => {
-                debug!("record_read({})", lossy(rec.name()));
+                debug!("record_read({})", rec.name());
                 if !a {
                     rec.set_pact(true);
                     fence(Ordering::SeqCst);
@@ -128,7 +126,7 @@ where R: ReadRecord + FromRaw + Into<AnyReadRecord> {
                 ret
             },
             Err(e) => {
-                error!("record_read({}): {}", lossy(rec.name()), e);
+                error!("record_read({}): {}", rec.name(), e);
                 1
             },
         }
@@ -147,7 +145,7 @@ where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
             Err(crate::Error::Other("no handler".into()))
         }) {
             Ok(a) => {
-                debug!("record_write({})", lossy(rec.name()));
+                debug!("record_write({})", rec.name());
                 if !a {
                     rec.set_pact(true);
                     fence(Ordering::SeqCst);
@@ -156,7 +154,7 @@ where R: WriteRecord + FromRaw + Into<AnyWriteRecord> {
                 0
             },
             Err(e) => {
-                error!("record_write({}): {}", lossy(rec.name()), e);
+                error!("record_write({}): {}", rec.name(), e);
                 1
             },
         }
@@ -171,7 +169,7 @@ where R: Record + FromRaw {
     let rec = R::from_raw(raw);
     panic!(
         "record '{}' unexpectedly requested linconv: {}",
-        lossy(rec.name()), "this action is not supported yet",
+        rec.name(), "this action is not supported yet",
     );
 }
 
@@ -278,15 +276,54 @@ macro_rules! _bind_record_linconv {
     };
 }
 
+pub fn record_init_handler<'a, R: 'a, H>(rec: &'a mut AnyRecord, args: &[&str]) -> crate::Result<H>
+where R: Record + SType, &'a mut R: TryFrom<&'a mut AnyRecord>, H: InitHandler<R> {
+    let rt = rec.rtype();
+    <&mut R>::try_from(rec).map_err(|_| format!(
+        "record and handler type mismatch: {:?} != {:?}",
+        rt, R::stype(),
+    ).into())
+    .and_then(|mut r| H::init(&mut r, args))
+}
+
+#[macro_export]
+macro_rules! _record_init_fn {
+    ( $( $x:path ),* ) => {
+        $crate::_record_init_fn!( $( $x, )* );
+    };
+    ( $( $H:path, )* ) => {
+        fn _record_init_fn(record: &mut AnyRecord) -> $crate::Result<AnyHandlerBox> {
+            $crate::log::debug!("record_init({})", record.name());
+            let text = String::from(record.link());
+            let args: Vec<&str> = text.split(',').map(|s| s.trim()).collect();
+            if args.len() >= 1 && args[0].len() > 0 {
+                match args[0] { 
+                    $( stringify!($H) => {
+                        $crate::device_support::record_init_handler::<_, $H>
+                        (record, &args[1..]).map(|h| h.into_boxed().into())
+                    }, )*
+                    x @ _ => Err(format!("unknown handler: {}", x).into())
+                }
+            } else {
+                Err("wrong INP/OUT link format, should be '@<Handler>[, args...]'".into())
+            }
+        }
+    };
+}
+
 #[macro_export]
 macro_rules! bind_device_support {
-    ( $( $x:path ),* ) => {
-        $crate::bind_device_support!( $( $x, )* );
+    ($x:path, $y:tt) => {
+        $crate::bind_device_support!( $x, $y, );
     };
-    (
-        $init:path,
-        $record_init:path,
-    ) => {
+    ($x:path, { $( $y:ident ),* },) => {
+        $crate::bind_device_support!( $x, { $( $x, )* }, );
+    };
+    ( $init:path, { $( $H:ident, )* },) => {
+        $crate::_record_init_fn!( $( $H, )* );
+        $crate::bind_device_support!($init, _record_init_fn);
+    };
+    ($init:path, $record_init:path,) => {
         #[no_mangle]
         extern fn rsbind_init() {
             unsafe { $crate::device_support::init($init) };

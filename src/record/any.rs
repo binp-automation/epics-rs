@@ -44,6 +44,16 @@ macro_rules! try_from_any {
                 }
             }
         }
+        impl<'a> TryFrom<&'a mut $any> for &'a mut $type {
+            type Error = ();
+            fn try_from(a: &'a mut $any) -> Result<Self, ()> {
+                if let $any::$opt(ref mut x) = a {
+                    Ok(x)
+                } else {
+                    Err(())
+                }
+            }
+        }
     };
 }
 
@@ -254,44 +264,6 @@ try_from_any!(AnyWriteRecord, Ao, AoRecord);
 try_from_any!(AnyWriteRecord, Bo, BoRecord);
 try_from_any!(AnyWriteRecord, Longout, LongoutRecord);
 try_from_any!(AnyWriteRecord, Stringout, StringoutRecord);
-
-
-/// Analog record wrapper
-pub enum AnalogRecord {
-    Ai(AiRecord),
-    Ao(AoRecord),
-}
-impl AnalogRecord {
-    pub fn rtype(&self) -> RecordType {
-        match self {
-            AnalogRecord::Ai(_) => RecordType::Ai,
-            AnalogRecord::Ao(_) => RecordType::Ao,
-        }
-    }
-}
-impl Deref for AnalogRecord {
-    type Target = Record;
-    fn deref(&self) -> &Self::Target {
-        match self {
-            AnalogRecord::Ai(ref r) => r,
-            AnalogRecord::Ao(ref r) => r,
-        }
-    }
-}
-impl DerefMut for AnalogRecord {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            AnalogRecord::Ai(ref mut r) => r,
-            AnalogRecord::Ao(ref mut r) => r,
-        }
-    }
-}
-
-into_any!(AnalogRecord, Ai, AiRecord);
-into_any!(AnalogRecord, Ao, AoRecord);
-
-try_from_any!(AnalogRecord, Ai, AiRecord);
-try_from_any!(AnalogRecord, Ao, AoRecord);
 
 
 /// Any boxed handler wrapper

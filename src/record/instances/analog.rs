@@ -9,7 +9,9 @@ use crate::record::{
 // Analog input
 
 /// Handler trait for analog input
-pub trait AiHandler: ScanHandler<AiRecord> + ReadHandler<AiRecord> {}
+pub trait AiHandler: ScanHandler<AiRecord> + ReadHandler<AiRecord> {
+    impl_into_boxed_handler!(AiHandler);
+}
 
 /// Analog input private data
 pub struct AiPrivate {
@@ -45,6 +47,7 @@ impl FromRaw for AiRecord {
         Self { raw: raw.as_mut().unwrap() }
     }
 }
+derive_stype!(AiRecord, Ai);
 derive_record!(AiRecord, AiPrivate);
 derive_scan_record!(AiRecord);
 derive_read_record!(AiRecord);
@@ -55,7 +58,9 @@ unsafe impl Send for AiRecord {}
 // Analog output
 
 /// Handler trait for analog output
-pub trait AoHandler: ScanHandler<AoRecord> + WriteHandler<AoRecord> {}
+pub trait AoHandler: ScanHandler<AoRecord> + WriteHandler<AoRecord> {
+    impl_into_boxed_handler!(AoHandler);
+}
 
 /// Analog output private data
 pub struct AoPrivate {
@@ -91,7 +96,7 @@ impl FromRaw for AoRecord {
         Self { raw: raw.as_mut().unwrap() }
     }
 }
-
+derive_stype!(AoRecord, Ao);
 derive_record!(AoRecord, AoPrivate);
 derive_scan_record!(AoRecord);
 derive_write_record!(AoRecord);

@@ -15,6 +15,16 @@ macro_rules! derive_deref {
         }
     };
 }
+
+#[macro_use]
+macro_rules! impl_into_boxed_handler {
+    ($Handler:ident) => {
+        fn into_boxed(self) -> Box<dyn $Handler + Send> where Self: 'static + Sized + Send {
+            Box::new(self)
+        }
+    };
+}
+
 #[macro_use]
 macro_rules! derive_deref_record {
     ($Struct:ident) => {
@@ -111,11 +121,36 @@ macro_rules! derive_scan_record {
 macro_rules! derive_read_record {
     ($Record:ident) => {
         impl crate::record::ReadRecord for $Record {
+            fn inp(&self) -> &str {
+                let inp = &self.raw.inp;
+                if inp.type_ as i32 == crate::epics_sys::INST_IO as i32 {
+                    unsafe { crate::util::cstr_ptr_read(inp.value.instio.string) }
+                    .expect(&format!(
+                        "record({}) INP link is empty",
+                        self.name(),
+                    ))
+                    .expect(&format!(
+                        "record({}) INP link contains bad characters",
+                        self.name(),
+                    ))
+                } else {
+                    panic!(
+                        "wrong record({}) INP link type, should be INST_IO",
+                        self.name(),
+                    );
+                }
+            }
+
             unsafe fn handler_read(&mut self) -> Option<crate::Result<bool>> {
                 self.with_handler(|h, r| h.read(r))
             }
             unsafe fn handler_read_async(&mut self) -> Option<crate::Result<()>> {
                 self.with_handler(|h, r| h.read_async(r))
+            }
+        }
+        impl crate::record::Linked for $Record {
+            fn link(&self) -> &str {
+                crate::record::ReadRecord::inp(self)
             }
         }
     }
@@ -124,6 +159,26 @@ macro_rules! derive_read_record {
 macro_rules! derive_write_record {
     ($Record:ident) => {
         impl crate::record::WriteRecord for $Record {
+            fn out(&self) -> &str {
+                let out = &self.raw.out;
+                if out.type_ as i32 == crate::epics_sys::INST_IO as i32 {
+                    unsafe { crate::util::cstr_ptr_read(out.value.instio.string) }
+                    .expect(&format!(
+                        "record({}) OUT link is empty",
+                        self.name(),
+                    ))
+                    .expect(&format!(
+                        "record({}) OUT link contains bad characters",
+                        self.name(),
+                    ))
+                } else {
+                    panic!(
+                        "wrong record({}) OUT link type, should be INST_IO",
+                        self.name(),
+                    );
+                }
+            }
+
             unsafe fn handler_write(&mut self) -> Option<crate::Result<bool>> {
                 self.with_handler(|h, r| h.write(r))
             }
@@ -131,5 +186,21 @@ macro_rules! derive_write_record {
                 self.with_handler(|h, r| h.write_async(r))
             }
         }
+        impl crate::record::Linked for $Record {
+            fn link(&self) -> &str {
+                crate::record::WriteRecord::out(self)
+            }
+        }
     }
+}
+
+#[macro_use]
+macro_rules! derive_stype {
+    ($S:ident, $t:ident) => {
+        impl crate::record::SType for $S {
+            fn stype() -> RecordType {
+                RecordType::$t
+            }
+        }
+    };
 }

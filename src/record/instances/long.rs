@@ -10,7 +10,10 @@ use crate::record::{
 // Long input
 
 /// Handler trait for long input
-pub trait LonginHandler: ScanHandler<LonginRecord> + ReadHandler<LonginRecord> {}
+pub trait LonginHandler: ScanHandler<LonginRecord> + ReadHandler<LonginRecord> {
+    impl_into_boxed_handler!(LonginHandler);
+}
+
 /// Long input private data
 pub struct LonginPrivate {
     base: CommonPrivate,
@@ -45,6 +48,7 @@ impl FromRaw for LonginRecord {
         Self { raw: raw.as_mut().unwrap() }
     }
 }
+derive_stype!(LonginRecord, Longin);
 derive_record!(LonginRecord, LonginPrivate);
 derive_scan_record!(LonginRecord);
 derive_read_record!(LonginRecord);
@@ -55,7 +59,10 @@ unsafe impl Send for LonginRecord {}
 // Long output
 
 /// Handler trait for long output
-pub trait LongoutHandler: ScanHandler<LongoutRecord> + WriteHandler<LongoutRecord> {}
+pub trait LongoutHandler: ScanHandler<LongoutRecord> + WriteHandler<LongoutRecord> {
+    impl_into_boxed_handler!(LongoutHandler);
+}
+
 /// Long output private data
 pub struct LongoutPrivate {
     base: CommonPrivate,
@@ -90,6 +97,7 @@ impl FromRaw for LongoutRecord {
         Self { raw: raw.as_mut().unwrap() }
     }
 }
+derive_stype!(LongoutRecord, Longout);
 derive_record!(LongoutRecord, LongoutPrivate);
 derive_scan_record!(LongoutRecord);
 derive_write_record!(LongoutRecord);

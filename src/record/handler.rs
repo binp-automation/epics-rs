@@ -1,13 +1,18 @@
 use crate::record::{
     Scan, Record,
     ScanRecord, ReadRecord, WriteRecord,
-    AnyHandlerBox,
 };
 
 /// Base of all handlers
-pub trait Handler<R: Record> {
-    /// Converts self into AnyHandlerBox
-    fn into_any_box(self) -> AnyHandlerBox;
+pub trait Handler<R: Record> {}
+
+/// Handler that able to be initialized
+pub trait InitHandler<R: Record>: Handler<R> {
+    /// Called on record initialization.
+    /// Takes record itself and arguments from INP or OUT field.
+    ///
+    /// Returns new handler instance.
+    fn init(rec: &mut R, args: &[&str]) -> crate::Result<Self> where Self: Sized;
 }
 
 /// Handler for scannable records

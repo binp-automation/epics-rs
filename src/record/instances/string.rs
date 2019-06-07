@@ -1,5 +1,5 @@
 use epics_sys::{stringinRecord, stringoutRecord};
-use crate::util::{cstr_to_slice, cstr_copy_from_slice};
+use crate::util::{cstr_array_read_bytes, cstr_array_write_bytes};
 
 use crate::record::{
     Scan, RecordType, FromRaw, Private, CommonPrivate,
@@ -10,7 +10,10 @@ use crate::record::{
 // String input
 
 /// Handler trait for string input
-pub trait StringinHandler: ScanHandler<StringinRecord> + ReadHandler<StringinRecord> {}
+pub trait StringinHandler: ScanHandler<StringinRecord> + ReadHandler<StringinRecord> {
+    impl_into_boxed_handler!(StringinHandler);
+}
+
 /// String input private data
 pub struct StringinPrivate {
     base: CommonPrivate,
@@ -30,10 +33,10 @@ pub struct StringinRecord {
 }
 impl StringinRecord {
     pub fn val(&self) -> &[u8] {
-        cstr_to_slice(&self.raw.val)
+        cstr_array_read_bytes(&self.raw.val)
     }
     pub fn set_val(&mut self, val: &[u8]) {
-        cstr_copy_from_slice(&mut self.raw.val, val);
+        cstr_array_write_bytes(&mut self.raw.val, val);
     }
 }
 impl_record_private!(StringinRecord, StringinPrivate);
@@ -45,6 +48,7 @@ impl FromRaw for StringinRecord {
         Self { raw: raw.as_mut().unwrap() }
     }
 }
+derive_stype!(StringinRecord, Stringin);
 derive_record!(StringinRecord, StringinPrivate);
 derive_scan_record!(StringinRecord);
 derive_read_record!(StringinRecord);
@@ -55,7 +59,10 @@ unsafe impl Send for StringinRecord {}
 // String output
 
 /// Handler trait for string output
-pub trait StringoutHandler: ScanHandler<StringoutRecord> + WriteHandler<StringoutRecord> {}
+pub trait StringoutHandler: ScanHandler<StringoutRecord> + WriteHandler<StringoutRecord> {
+    impl_into_boxed_handler!(StringoutHandler);
+}
+
 /// String output private data
 pub struct StringoutPrivate {
     base: CommonPrivate,
@@ -75,10 +82,10 @@ pub struct StringoutRecord {
 }
 impl StringoutRecord {
     pub fn val(&self) -> &[u8] {
-        cstr_to_slice(&self.raw.val)
+        cstr_array_read_bytes(&self.raw.val)
     }
     pub fn set_val(&mut self, val: &[u8]) {
-        cstr_copy_from_slice(&mut self.raw.val, val);
+        cstr_array_write_bytes(&mut self.raw.val, val);
     }
 }
 impl_record_private!(StringoutRecord, StringoutPrivate);
@@ -90,7 +97,7 @@ impl FromRaw for StringoutRecord {
         Self { raw: raw.as_mut().unwrap() }
     }
 }
-
+derive_stype!(StringoutRecord, Stringout);
 derive_record!(StringoutRecord, StringoutPrivate);
 derive_scan_record!(StringoutRecord);
 derive_write_record!(StringoutRecord);

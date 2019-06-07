@@ -10,7 +10,10 @@ use crate::record::{
 // Binary input
 
 /// Handler trait for binary input
-pub trait BiHandler: ScanHandler<BiRecord> + ReadHandler<BiRecord> {}
+pub trait BiHandler: ScanHandler<BiRecord> + ReadHandler<BiRecord> {
+    impl_into_boxed_handler!(BiHandler);
+}
+
 /// Binary input private data
 pub struct BiPrivate {
     base: CommonPrivate,
@@ -45,6 +48,7 @@ impl FromRaw for BiRecord {
         Self { raw: raw.as_mut().unwrap() }
     }
 }
+derive_stype!(BiRecord, Bi);
 derive_record!(BiRecord, BiPrivate);
 derive_scan_record!(BiRecord);
 derive_read_record!(BiRecord);
@@ -55,7 +59,10 @@ unsafe impl Send for BiRecord {}
 // Binary output
 
 /// Handler trait for binary output
-pub trait BoHandler: ScanHandler<BoRecord> + WriteHandler<BoRecord> {}
+pub trait BoHandler: ScanHandler<BoRecord> + WriteHandler<BoRecord> {
+    impl_into_boxed_handler!(BoHandler);
+}
+
 /// Binary output private data
 pub struct BoPrivate {
     base: CommonPrivate,
@@ -90,6 +97,7 @@ impl FromRaw for BoRecord {
         Self { raw: raw.as_mut().unwrap() }
     }
 }
+derive_stype!(BoRecord, Bo);
 derive_record!(BoRecord, BoPrivate);
 derive_scan_record!(BoRecord);
 derive_write_record!(BoRecord);

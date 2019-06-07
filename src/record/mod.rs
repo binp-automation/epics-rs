@@ -12,3 +12,10 @@ pub use request::*;
 
 pub use instances::*;
 pub use any::*;
+
+pub mod prelude {
+	pub use super::common::{
+		Linked, Record, ScanRecord,
+		ReadRecord, WriteRecord,
+	};
+}

@@ -12,7 +12,7 @@ use crate::{
         Scan, Callback,
         RecordType,
     },
-    util::{cstr_to_slice},
+    util::{cstr_array_read},
 };
 
 
@@ -50,8 +50,18 @@ pub(crate) unsafe fn raw_private_create(raw: &mut dbCommon, rtype: RecordType) -
     }
 }
 
+/// Linked record
+pub trait Linked {
+    fn link(&self) -> &str;
+}
+
+/// Static type
+pub trait SType {
+    fn stype() -> RecordType;
+}
+
 /// Behavior that is common for all records
-pub trait Record {
+pub trait Record: Linked {
     unsafe fn as_raw(&self) -> &dbCommon;
     unsafe fn as_raw_mut(&mut self) -> &mut dbCommon;
 
@@ -60,9 +70,11 @@ pub trait Record {
     fn rtype(&self) -> RecordType {
         unsafe { self.private() }.rtype
     }
-    fn name(&self) -> &[u8] {
-        cstr_to_slice(&unsafe { self.as_raw() }.name)
+    fn name(&self) -> &str {
+        cstr_array_read(&unsafe { self.as_raw() }.name)
+        .expect("record name contains bad charactrers")
     }
+
     fn pact(&self) -> bool {
         unsafe { self.as_raw() }.pact != 0
     }
@@ -95,12 +107,18 @@ pub trait ScanRecord: Record {
 
 /// Readable record behavior
 pub trait ReadRecord: Record {
+    /// Return text field of INP link if its type is CONSTANT
+    fn inp(&self) -> &str;
+
     unsafe fn handler_read(&mut self) -> Option<crate::Result<bool>>;
     unsafe fn handler_read_async(&mut self) -> Option<crate::Result<()>>;
 }
 
 /// Writable record behavior
 pub trait WriteRecord: Record {
+    /// Return text field of OUT link if its type is CONSTANT
+    fn out(&self) -> &str;
+
     unsafe fn handler_write(&mut self) -> Option<crate::Result<bool>>;
     unsafe fn handler_write_async(&mut self) -> Option<crate::Result<()>>;
 }

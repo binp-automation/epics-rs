@@ -9,7 +9,6 @@ use log::{debug, error};
 use lazy_static::lazy_static;
 
 use crate::record::{AnyReadRecord, AnyWriteRecord};
-use crate::util::lossy;
 
 pub(crate) enum Message {
     Break,
@@ -38,8 +37,8 @@ fn handler_loop(channel: Receiver<Message>) {
                 match rec.handler_read_async().unwrap_or_else(|| {
                     Err(crate::Error::Other("no handler".into()))
                 }) {
-                    Ok(()) => debug!("record_read_async({})", lossy(rec.name())),
-                    Err(e) => error!("record_read_async({}): {}", lossy(rec.name()), e),
+                    Ok(()) => debug!("record_read_async({})", rec.name()),
+                    Err(e) => error!("record_read_async({}): {}", rec.name(), e),
                 }
                 fence(Ordering::SeqCst);
                 rec.process().unwrap();
@@ -48,8 +47,8 @@ fn handler_loop(channel: Receiver<Message>) {
                 match rec.handler_write_async().unwrap_or_else(|| {
                     Err(crate::Error::Other("no handler".into()))
                 }) {
-                    Ok(()) => debug!("record_write_async({})", lossy(rec.name())),
-                    Err(e) => error!("record_write_async({}): {}", lossy(rec.name()), e),
+                    Ok(()) => debug!("record_write_async({})", rec.name()),
+                    Err(e) => error!("record_write_async({}): {}", rec.name(), e),
                 }
                 fence(Ordering::SeqCst);
                 rec.process().unwrap();

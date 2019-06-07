@@ -3,7 +3,7 @@ pub use libc;
 pub use epics_sys;
 
 
-mod util;
+pub mod util;
 
 pub mod record;
 pub mod context;
@@ -19,3 +19,7 @@ mod test;
 pub use record::*;
 pub use context::*;
 pub use error::*;
+
+pub mod prelude {
+	pub use crate::record::prelude::*;
+}
